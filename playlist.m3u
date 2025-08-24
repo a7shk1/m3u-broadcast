@@ -6,7 +6,7 @@ https://test.vartv.live/master2.m3u8
 #EXTINF:-1,beIN SPORTS 3 [H265]
 https://test.vartv.live/master3.m3u8
 #EXTINF:-1,beIN SPORTS 4 [H265]
-https://test.vartv.live/master4.m3u8
+https://test.vartv.live/hls/ch4.m3u8
 #EXTINF:-1,beIN SPORTS 5 [H265]
 https://test.vartv.live/master5.m3u8
 #EXTINF:-1,beIN SPORTS 6 [H265]
@@ -17,5 +17,6 @@ https://test.vartv.live/master7.m3u8
 https://test.vartv.live/master8.m3u8
 #EXTINF:-1,beIN SPORTS 9 [H265]
 https://test.vartv.live/master9.m3u8
+
 
 
