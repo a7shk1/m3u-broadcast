@@ -1,22 +1,19 @@
 #EXTM3U
-#EXTINF:-1,beIN SPORTS 1 [H265]
-https://test.vartv.live/master.m3u8
-#EXTINF:-1,beIN SPORTS 2 [H265]
-https://test.vartv.live/master2.m3u8
-#EXTINF:-1,beIN SPORTS 3 [H265]
-https://test.vartv.live/master3.m3u8
-#EXTINF:-1,beIN SPORTS 4 [H265]
+#EXTINF:-1,beIN SPORTS 1
+https://test.vartv.live/hls/ch1.m3u8
+#EXTINF:-1,beIN SPORTS 2
+https://test.vartv.live/hls/ch2.m3u8
+#EXTINF:-1,beIN SPORTS 3
+https://test.vartv.live/hls/ch3.m3u8
+#EXTINF:-1,beIN SPORTS 4
 https://test.vartv.live/hls/ch4.m3u8
-#EXTINF:-1,beIN SPORTS 5 [H265]
-https://test.vartv.live/master5.m3u8
-#EXTINF:-1,beIN SPORTS 6 [H265]
-https://test.vartv.live/master6.m3u8
-#EXTINF:-1,beIN SPORTS 7 [H265]
-https://test.vartv.live/master7.m3u8
-#EXTINF:-1,beIN SPORTS 8 [H265]
-https://test.vartv.live/master8.m3u8
-#EXTINF:-1,beIN SPORTS 9 [H265]
-https://test.vartv.live/master9.m3u8
-
-
-
+#EXTINF:-1,beIN SPORTS 5
+https://test.vartv.live/hls/ch5.m3u8
+#EXTINF:-1,beIN SPORTS 6
+https://test.vartv.live/hls/ch6.m3u8
+#EXTINF:-1,beIN SPORTS 7
+https://test.vartv.live/hls/ch7.m3u8
+#EXTINF:-1,beIN SPORTS 8
+https://test.vartv.live/hls/ch8.m3u8
+#EXTINF:-1,beIN SPORTS 9
+https://test.vartv.live/hls/ch9.m3u8
