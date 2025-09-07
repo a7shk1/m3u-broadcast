@@ -8,7 +8,7 @@ https://test.vartv.live/hls/ch3.m3u8
 #EXTINF:-1,beIN SPORTS 4
 https://stream.supertv.gg:3004/supertv/sport/stv4/ch4/ch4_720.m3u8
 #EXTINF:-1,beIN SPORTS 5
-http://a2.dinott.com:80/play/live.php?mac=00:1A:79:A9:14:A0&stream=577995&extension=ts&play_token=fbdiwT7Lu4
+https://test.vartv.live/hls/ch11.m3u8
 #EXTINF:-1,beIN SPORTS 6
 https://test.vartv.live/hls/ch6.m3u8
 #EXTINF:-1,beIN SPORTS 7
@@ -17,6 +17,7 @@ https://test.vartv.live/hls/ch7.m3u8
 https://test.vartv.live/hls/ch8.m3u8
 #EXTINF:-1,beIN SPORTS 9
 https://test.vartv.live/hls/ch9.m3u8
+
 
 
 
