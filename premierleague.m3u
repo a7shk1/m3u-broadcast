@@ -1,0 +1,11 @@
+#EXTM3U
+#EXTINF:-1,TNT SPORTS
+http://181.78.201.70:8000/play/a0tx/index.m3u8
+#EXTINF:-1,TNT SPORTS 1
+https://maldivesn.net/hilaytv/tnt1
+#EXTINF:-1,TNT SPORTS 2
+https://maldivesn.net/hilaytv/tnt2
+#EXTINF:-1,Sky Sports Main Event HD
+https://maldivesn.net/hilaytv/skysportsmaineventud
+#EXTINF:-1,Sky Premier League HD
+https://maldivesn.net/hilaytv/skypremierleaguehd
