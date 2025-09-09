@@ -1,0 +1,23 @@
+#EXTM3U
+#EXTINF:-1,Varzesh TV Iran
+https://lenz.splus.ir/PLTV/88888888/224/3221226845/1.m3u8
+#EXTINF:-1,Varzish TV Tajikistan
+https://stream2.removie.raha.af/live/smil:tjvarzishtv.smil/chunklist_w852771320_b1500000.m3u8
+#EXTINF:-1,Football HD Tajikistan
+https://stream2.removie.raha.af/live/smil:footballtv.smil/playlist.m3u8
+#EXTINF:-1,IRIB TV 3 Iran
+https://wo.cma.footballii.ir/hls2/tv3.m3u8
+#EXTINF:-1,Persiana Sports Iran
+https://stream.live12.ir/hls2/persiana.m3u8
+#EXTINF:-1,Match! Futbol 1
+http://31.148.48.15:80/Match_Futbol_1_HD/index.m3u8
+#EXTINF:-1,Match! Futbol 2
+http://31.148.48.15/Match_Futbol_2_HD/index.m3u8
+#EXTINF:-1,Match! Futbol 3
+http://31.148.48.15/Match_Futbol_3_HD/index.m3u8
+#EXTINF:-1,Match! TV Russia
+http://178.212.71.253:8002/play/a00k/index.m3u8
+#EXTINF:-1,Sport TV 1
+https://maldivesn.net/hilaytv/sporttv1
+#EXTINF:-1,Sport TV 2
+https://maldivesn.net/hilaytv/sporttv2
