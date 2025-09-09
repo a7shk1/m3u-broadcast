@@ -1,0 +1,19 @@
+#EXTM3U
+#EXTINF:-1, MBC 1
+https://stream.supertv.gg:3029/supertv/enter/stv9/ch9/ch9_720.m3u8
+#EXTINF:-1, MBC 2
+https://stream.supertv.gg:3029/supertv/enter/stv2/ch2/ch2_720.m3u8
+#EXTINF:-1, MBC 3
+https://stream.supertv.gg:3029/supertv/enter/stv3/ch3/ch3_720.m3u8
+#EXTINF:-1, MBC 4
+https://stream.supertv.gg:3029/supertv/enter/stv4/ch4/ch4_720.m3u8
+#EXTINF:-1, mbc Action 
+https://stream.supertv.gg:3025/supertv/enter/stv5/ch5/ch5_720.m3u8
+#EXTINF:-1, MBC Drama+ 
+https://stream.supertv.gg:3028/supertv/enter/stv8/ch8/ch8_720.m3u8
+#EXTINF:-1, MBC Drama
+https://stream.supertv.gg:3027/supertv/enter/stv7/ch7/ch7_720.m3u8
+#EXTINF:-1, mbc masr 
+https://stream.supertv.gg:3030/supertv/enter/stv10/ch10/ch10_720.m3u8
+#EXTINF:-1, mbc masr2 
+https://stream.supertv.gg:3030/supertv/enter/stv11/ch11/ch11_720.m3u8
