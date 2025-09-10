@@ -51,38 +51,23 @@ jobs:
           echo "---- scripts ----"
           ls -la scripts || true
 
-      - name: Quick API-FOOTBALL ping
+      - name: Quick SoccersAPI ping
         env:
-          APIFOOTBALL_KEY: ${{ secrets.APIFOOTBALL_KEY }}
-        run: |
-          python - <<'PY'
-          import os, requests
-          k=os.environ.get("APIFOOTBALL_KEY","")
-          assert k, "APIFOOTBALL_KEY missing"
-          r=requests.get("https://v3.football.api-sports.io/status",
-                         headers={"x-apisports-key": k}, timeout=20)
-          print("[API-FOOTBALL STATUS]", r.status_code, r.text[:300])
-          PY
-
-      - name: Quick Sportmonks ping
-        env:
-          SPORTMONKS_TOKEN: ${{ secrets.SPORTMONKS_TOKEN }}
+          SOCCERAPI: ${{ secrets.SOCCERAPI }}
         run: |
           python - <<'PY'
           import os, requests, datetime as dt
-          t=os.environ.get("SPORTMONKS_TOKEN","")
-          if not t:
-            print("[SM] no token set (skipping)"); raise SystemExit(0)
-          date=dt.date.today().isoformat()
-          url=f"https://api.sportmonks.com/v3/football/fixtures/date/{date}"
-          r=requests.get(url, headers={"Authorization": t, "Accept":"application/json"}, timeout=20)
-          print("[SM STATUS]", r.status_code, r.text[:200])
+          secret=os.environ.get("SOCCERAPI","")
+          assert secret, "SOCCERAPI secret missing"
+          today=dt.date.today().isoformat()
+          url=f"https://api.soccersapi.com/v2.2/broadcast/?{secret}&t=schedule&d={today}&include=tvs"
+          r=requests.get(url, timeout=20)
+          print("[SOCCERAPI STATUS]", r.status_code, r.text[:200])
           PY
 
       - name: Build today.json
         env:
-          APIFOOTBALL_KEY: ${{ secrets.APIFOOTBALL_KEY }}
-          SPORTMONKS_TOKEN: ${{ secrets.SPORTMONKS_TOKEN }}
+          SOCCERAPI: ${{ secrets.SOCCERAPI }}
           FORCE_DATE: ${{ github.event.inputs.force_date }}
           DEBUG_MATCHES: ${{ github.event.inputs.debug }}
         run: |
