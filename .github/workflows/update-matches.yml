@@ -1,0 +1,35 @@
+name: Update Matches (today.json)
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"  # كل 15 دقيقة (بتوقيت UTC)
+  workflow_dispatch: {}      # تشغيل يدوي من تبويب Actions
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pyyaml
+
+      - name: Build today.json
+        env:
+          APIFOOTBALL_KEY: ${{ secrets.APIFOOTBALL_KEY }}
+        run: |
+          python scripts/build_today_matches.py
+
+      - name: Commit & push if changed
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update matches/today.json"
+          file_pattern: matches/today.json
