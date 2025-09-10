@@ -13,7 +13,7 @@ on:
         required: false
 
 permissions:
-  contents: write            # ضروري للسماح بالـ commit/push
+  contents: write
 
 jobs:
   build:
@@ -29,7 +29,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Ensure tzdata (for timezones)
+      - name: Ensure tzdata
         run: |
           sudo apt-get update
           sudo apt-get install -y tzdata
@@ -39,35 +39,31 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Python & pip
+      - name: Install deps
         run: |
-          python -V
           python -m pip install --upgrade pip
           pip install requests pyyaml
 
-      - name: Tree before
-        run: |
-          ls -la
-          echo "---- scripts ----"
-          ls -la scripts || true
-
       - name: Quick SoccersAPI ping
         env:
-          SOCCERAPI: ${{ secrets.SOCCERAPI }}
+          SOCCERAPI_USER: ${{ secrets.SOCCERAPI_USER }}
+          SOCCERAPI_TOKEN: ${{ secrets.SOCCERAPI_TOKEN }}
         run: |
           python - <<'PY'
           import os, requests, datetime as dt
-          secret=os.environ.get("SOCCERAPI","")
-          assert secret, "SOCCERAPI secret missing"
+          u=os.environ.get("SOCCERAPI_USER")
+          t=os.environ.get("SOCCERAPI_TOKEN")
+          assert u and t, "missing secrets"
           today=dt.date.today().isoformat()
-          url=f"https://api.soccersapi.com/v2.2/broadcast/?{secret}&t=schedule&d={today}&include=tvs"
-          r=requests.get(url, timeout=20)
+          url="https://api.soccersapi.com/v2.2/broadcast/"
+          r=requests.get(url, params={"user":u,"token":t,"t":"schedule","d":today,"include":"tvs"}, timeout=20)
           print("[SOCCERAPI STATUS]", r.status_code, r.text[:200])
           PY
 
       - name: Build today.json
         env:
-          SOCCERAPI: ${{ secrets.SOCCERAPI }}
+          SOCCERAPI_USER: ${{ secrets.SOCCERAPI_USER }}
+          SOCCERAPI_TOKEN: ${{ secrets.SOCCERAPI_TOKEN }}
           FORCE_DATE: ${{ github.event.inputs.force_date }}
           DEBUG_MATCHES: ${{ github.event.inputs.debug }}
         run: |
@@ -75,9 +71,7 @@ jobs:
 
       - name: Show output
         run: |
-          echo "---- matches dir ----"
           ls -la matches || true
-          echo "---- today.json ----"
           cat matches/today.json || true
 
       - name: Commit & push if changed
