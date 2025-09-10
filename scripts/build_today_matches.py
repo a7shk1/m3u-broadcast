@@ -13,6 +13,9 @@ with open(CFG_PATH, "r", encoding="utf-8") as f:
 
 TZ = ZoneInfo(CFG.get("timezone", "Asia/Baghdad"))
 
+# DEBUG يطبع أسباب الاستبعاد باللوج
+DEBUG = os.environ.get("DEBUG_MATCHES", "0") == "1"
+
 # استثناءات
 EXC_LEAGUE = CFG.get("exclude_if_league_matches") or []
 EXC_TEAM   = CFG.get("exclude_if_team_matches") or []
@@ -109,19 +112,30 @@ def map_broadcaster_to_app(name: str | None) -> str | None:
 def fetch_fixtures_apifootball(date_iso: str):
     url = "https://v3.football.api-sports.io/fixtures"
     headers = {"x-apisports-key": API_KEY}
-    params  = {"date": date_iso, "timezone": "UTC"}
+    params  = {
+        "date": date_iso,
+        # ✅ نطلب اليوم حسب توقيت بغداد (مو UTC) حتى تتطابق التصفية
+        "timezone": CFG.get("timezone", "Asia/Baghdad"),
+    }
     r = requests.get(url, headers=headers, params=params, timeout=30)
     r.raise_for_status()
-    return r.json().get("response", [])
+    data = r.json()
+    res = (data.get("response") or [])
+    if DEBUG:
+        print(f"[DEBUG] API-FOOTBALL fixtures for {date_iso} ({params['timezone']}): {len(res)}")
+    return res
 
 def sportmonks_fixtures_by_date(date_iso: str):
     """نجيب كل مباريات اليوم من سبورت مونكس مع الفرق/الدوري (للمطابقة)."""
-    if not SM_TOKEN: return []
+    if not SM_TOKEN: 
+        if DEBUG: print("[DEBUG] SPORTMONKS_TOKEN not set, skipping TV lookup")
+        return []
     url = f"https://api.sportmonks.com/v3/football/fixtures/date/{date_iso}"
     headers = {"Authorization": SM_TOKEN, "Accept": "application/json"}
     params  = {"include": "participants;league;country"}
     r = requests.get(url, headers=headers, params=params, timeout=30)
     if r.status_code != 200:
+        if DEBUG: print(f"[DEBUG] Sportmonks fixtures fetch failed: {r.status_code} {r.text[:200]}")
         return []
     data = r.json().get("data") or []
     out = []
@@ -133,6 +147,8 @@ def sportmonks_fixtures_by_date(date_iso: str):
             "teams": [n.lower().strip() for n in names],
             "league": (fx.get("league") or {}).get("name","") or "",
         })
+    if DEBUG:
+        print(f"[DEBUG] Sportmonks fixtures for {date_iso}: {len(out)}")
     return out
 
 def sportmonks_tvstations_for_fixture(fixture_id: int):
@@ -140,8 +156,13 @@ def sportmonks_tvstations_for_fixture(fixture_id: int):
     url = f"https://api.sportmonks.com/v3/football/tv-stations/fixtures/{fixture_id}"
     headers = {"Authorization": SM_TOKEN, "Accept": "application/json"}
     r = requests.get(url, headers=headers, timeout=30)
-    if r.status_code != 200: return []
-    return r.json().get("data") or []
+    if r.status_code != 200:
+        if DEBUG: print(f"[DEBUG] TV stations fetch failed for {fixture_id}: {r.status_code}")
+        return []
+    data = r.json().get("data") or []
+    if DEBUG:
+        print(f"[DEBUG] TV stations for fixture {fixture_id}: {len(data)} found")
+    return data
 
 # ---------- مطابقة Fixture بين المصدرين ----------
 def match_fixture_id_sm(home: str, away: str, sm_fixtures: list[dict]) -> int | None:
@@ -173,8 +194,17 @@ def pick_channel_from_tvstations(stations: list[dict]) -> tuple[str | None, str 
 
 # ---------- Main ----------
 def main():
-    # التاريخ حسب المنطقة الزمنية (نرسل طلب اليوم نفسه لـ API-FOOTBALL)
-    today_local = dt.datetime.now(TZ).date()
+    # 👇 دعم FORCE_DATE للاختبار (YYYY-MM-DD). إذا مو محدد، نستخدم اليوم المحلي.
+    forced = os.environ.get("FORCE_DATE")
+    if forced:
+        try:
+            today_local = dt.date.fromisoformat(forced)
+        except Exception:
+            print(f"ERROR: invalid FORCE_DATE: {forced}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        today_local = dt.datetime.now(TZ).date()
+
     date_iso = today_local.isoformat()
 
     fixtures = fetch_fixtures_apifootball(date_iso)
@@ -188,24 +218,30 @@ def main():
         league_cty = league_obj.get("country") or ""
 
         # استبعاد شباب/سيدات/رديف بالاسم
-        if any_match(league, EXC_LEAGUE): continue
+        if any_match(league, EXC_LEAGUE):
+            if DEBUG: print(f"[DEBUG] drop league (youth/women/reserve): {league}")
+            continue
 
         teams = fx.get("teams") or {}
         home  = (teams.get("home") or {}).get("name") or ""
         away  = (teams.get("away") or {}).get("name") or ""
         if any_match(home, EXC_TEAM) or any_match(away, EXC_TEAM):
+            if DEBUG: print(f"[DEBUG] drop team (youth/women/reserve): {home} vs {away}")
             continue
 
         # قبول البطولة؟
         if not match_allowed(league, league_cty):
+            if DEBUG: print(f"[DEBUG] drop league not allowed: {league} / {league_cty}")
             continue
 
         # وقت البداية ضمن "اليوم" المحلي
         dt_str = ((fx.get("fixture") or {}).get("date") or "").strip()
-        if not dt_str: 
+        if not dt_str:
+            if DEBUG: print(f"[DEBUG] drop: missing fixture.date for {home} vs {away}")
             continue
         start_utc = dt.datetime.fromisoformat(dt_str.replace("Z", "+00:00")).astimezone(dt.timezone.utc)
         if not within_today_local(start_utc):
+            if DEBUG: print(f"[DEBUG] drop outside local day: {league} {start_utc}")
             continue
 
         # الحالة والنتيجة النهائية إن وُجدت
@@ -222,6 +258,8 @@ def main():
         channel_app = None
         if sm_fixtures and SM_TOKEN:
             sm_id = match_fixture_id_sm(home, away, sm_fixtures)
+            if DEBUG and not sm_id:
+                print(f"[DEBUG] no SM match for: {home} vs {away}")
             if sm_id:
                 stations = sportmonks_tvstations_for_fixture(sm_id)
                 channel_src, channel_app = pick_channel_from_tvstations(stations)
