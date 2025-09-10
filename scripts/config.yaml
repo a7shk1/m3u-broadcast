@@ -1,0 +1,127 @@
+timezone: "Asia/Baghdad"
+
+# ✅ البطولات المسموحة فقط
+allowed_leagues:
+  # Big 5
+  - "(?i)Premier League"
+  - "(?i)La Liga|Primera Division"
+  - "(?i)Serie A"
+  - "(?i)Bundesliga"
+  - "(?i)Ligue 1"
+
+  # Saudi
+  - "(?i)(Saudi|Roshn).*Pro League|Pro League"
+
+  # UEFA
+  - "(?i)UEFA\\s*Champions League"
+  - "(?i)UEFA\\s*Europa League"
+  - "(?i)UEFA\\s*Europa Conference League"
+
+  # Spain cups
+  - "(?i)Copa\\s*del\\s*Rey"
+  - "(?i)Supercopa\\s*de\\s*Espana|Spanish\\s*Super\\s*Cup"
+
+  # Italy cups
+  - "(?i)Coppa\\s*Italia"
+  - "(?i)Supercoppa\\s*Italiana"
+
+  # Germany cups
+  - "(?i)DFB-?Pokal"
+  - "(?i)DFL-?Supercup|German\\s*Super\\s*Cup"
+
+  # France cups
+  - "(?i)Coupe\\s*de\\s*France"
+  - "(?i)Troph(e|ée)\\s*des\\s*Champions"
+
+  # England cups
+  - "(?i)FA\\s*Cup"
+  - "(?i)EFL\\s*Cup|Carabao\\s*Cup|League\\s*Cup"
+
+  # World/International
+  - "(?i)FIFA\\s*World\\s*Cup(?!.*U-)"
+  - "(?i)FIFA\\s*Club\\s*World\\s*Cup"
+  - "(?i)World\\s*Cup\\s*Qualification"
+  - "(?i)Intercontinental\\s*Play-?Off|Play-?Offs"
+  - "(?i)(International|National)\\s*Friendlies|Friendly\\s*Match"
+
+# ✅ أولوية اختيار القناة (Regex، من الأعلى للأدنى)
+channel_priority_patterns:
+  - "(?i)^beIN\\s*Sports\\s*\\d+$"
+  - "(?i)^DAZN\\s*\\d+$"
+  - "(?i)^SSC\\s*\\d+$"
+  - "(?i)^TNT\\s*SPORTS(\\s*\\d+)?$"
+  - "(?i)^Sky\\s*(Premier|Sports\\s*Main\\s*Event)\\s*HD$"
+  - "(?i)^Abu\\s*Dhabi\\s*Sports\\s*\\d+$"
+  - "(?i)^ESPN(\\s*\\d+)?$"
+  - "(?i)^Thmanyah(\\s*•?\\s*\\d+)?$"
+  - "(?i)^Stars\\s*Play\\s*\\d+$"
+  - "(?i)^Match!\\s*Futbol\\s*\\d+$|^Match!\\s*tv\\s*Russia$"
+  - "(?i)^Sport\\s*TV\\s*\\d+$"
+  - "(?i)^Varz(e|i)sh(\\s*tv)?(\\s*Tajikistan|\\s*Iran)?$|^Persiana\\s*sports\\s*Iran$|^Football\\s*hd\\s*Tajikistan$"
+  - "(?i)^MBC(\\s*Action)?$"
+
+# ✅ مرشّحات قنوات لكل بطولة (يرتّبها بعدين حسب قائمة الأولوية فوق)
+league_channels:
+  # Big 5
+  - if_league: "(?i)Premier League"
+    candidates: ["beIN Sports 1", "Sky Premier League HD", "TNT SPORTS 1", "DAZN 1"]
+  - if_league: "(?i)La Liga|Primera Division"
+    candidates: ["beIN Sports 1", "DAZN 1", "TNT SPORTS 1"]
+  - if_league: "(?i)Serie A"
+    candidates: ["beIN Sports 1", "DAZN 1", "Abu Dhabi Sports 1", "Stars Play 1"]
+  - if_league: "(?i)Bundesliga"
+    candidates: ["beIN Sports 1", "Sky Sports Main Event HD", "DAZN 1"]
+  - if_league: "(?i)Ligue 1"
+    candidates: ["beIN Sports 1", "DAZN 1"]
+
+  # Saudi
+  - if_league: "(?i)(Saudi|Roshn).*Pro League|Pro League"
+    candidates: ["SSC 1", "Thmanyah• 1", "beIN Sports 1"]
+
+  # UEFA
+  - if_league: "(?i)UEFA\\s*Champions League"
+    candidates: ["beIN Sports 1", "TNT SPORTS 1", "DAZN 1"]
+  - if_league: "(?i)UEFA\\s*Europa League"
+    candidates: ["beIN Sports 1", "TNT SPORTS 1", "DAZN 1"]
+  - if_league: "(?i)UEFA\\s*Europa Conference League"
+    candidates: ["TNT SPORTS 1", "beIN Sports 1", "DAZN 1"]
+
+  # Spain cups
+  - if_league: "(?i)Copa\\s*del\\s*Rey"
+    candidates: ["beIN Sports 1", "DAZN 1"]
+  - if_league: "(?i)Supercopa\\s*de\\s*Espana|Spanish\\s*Super\\s*Cup"
+    candidates: ["beIN Sports 1", "DAZN 1"]
+
+  # Italy cups
+  - if_league: "(?i)Coppa\\s*Italia"
+    candidates: ["beIN Sports 1", "Abu Dhabi Sports 1", "DAZN 1"]
+  - if_league: "(?i)Supercoppa\\s*Italiana"
+    candidates: ["beIN Sports 1", "Abu Dhabi Sports 1", "DAZN 1"]
+
+  # Germany cups
+  - if_league: "(?i)DFB-?Pokal"
+    candidates: ["beIN Sports 1", "Sky Sports Main Event HD", "DAZN 1"]
+  - if_league: "(?i)DFL-?Supercup|German\\s*Super\\s*Cup"
+    candidates: ["beIN Sports 1", "Sky Sports Main Event HD", "DAZN 1"]
+
+  # France cups
+  - if_league: "(?i)Coupe\\s*de\\s*France"
+    candidates: ["beIN Sports 1", "DAZN 1"]
+  - if_league: "(?i)Troph(e|ée)\\s*des\\s*Champions"
+    candidates: ["beIN Sports 1", "DAZN 1"]
+
+  # England cups
+  - if_league: "(?i)FA\\s*Cup"
+    candidates: ["TNT SPORTS 1", "beIN Sports 1", "Sky Sports Main Event HD"]
+  - if_league: "(?i)EFL\\s*Cup|Carabao\\s*Cup|League\\s*Cup"
+    candidates: ["TNT SPORTS 1", "beIN Sports 1", "Sky Sports Main Event HD"]
+
+  # World/International
+  - if_league: "(?i)FIFA\\s*World\\s*Cup(?!.*U-)|World\\s*Cup\\s*Qualification|Intercontinental\\s*Play-?Off|Play-?Offs"
+    candidates: ["beIN Sports 1", "DAZN 1", "Varzesh tv Iran", "Varzish tv Tajikistan", "Persiana sports Iran", "Football hd Tajikistan"]
+  - if_league: "(?i)FIFA\\s*Club\\s*World\\s*Cup"
+    candidates: ["beIN Sports 1", "DAZN 1"]
+
+# (اختياري) تخصيص قناة لمباراة معينة (Regex على أسماء الفريقين)
+overrides:
+  # "(?i)Al Hilal|Al Nassr": "SSC 2"
