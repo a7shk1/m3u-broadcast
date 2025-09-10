@@ -2,8 +2,11 @@ name: Update Matches (today.json)
 
 on:
   schedule:
-    - cron: "*/15 * * * *"  # كل 15 دقيقة (بتوقيت UTC)
-  workflow_dispatch: {}      # تشغيل يدوي من تبويب Actions
+    - cron: "*/15 * * * *"   # كل 15 دقيقة (UTC)
+  workflow_dispatch: {}
+
+permissions:
+  contents: write            # 👈 ضروري يسمح بالـ commit/push
 
 jobs:
   build:
@@ -25,12 +28,11 @@ jobs:
       - name: Build today.json
         env:
           APIFOOTBALL_KEY: ${{ secrets.APIFOOTBALL_KEY }}
-          SPORTMONKS_TOKEN: ${{ secrets.SPORTMONKS_TOKEN }}   # 👈 أضف هذا
-          FORCE_DATE: "2025-09-13"      # يوم سبت للتجربة فقط
-          DEBUG_MATCHES: "1"            # يطبع أسباب الاستبعاد في اللوج
+          SPORTMONKS_TOKEN: ${{ secrets.SPORTMONKS_TOKEN }}
+          FORCE_DATE: "2025-09-13"      # للتجربة فقط
+          DEBUG_MATCHES: "1"            # طباعة أسباب الاستبعاد
         run: |
           python scripts/build_today_matches.py
-
 
       - name: Commit & push if changed
         uses: stefanzweifel/git-auto-commit-action@v5
