@@ -1,127 +1,256 @@
+# scripts/build_today_matches.py
 import os, re, json, sys, datetime as dt
 from zoneinfo import ZoneInfo
 import requests, yaml
 
-def load_config(path):
-    with open(path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+# ---------- تحميل الإعدادات ----------
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CFG_PATH  = os.path.join(REPO_ROOT, "scripts", "config.yaml")
+OUT_PATH  = os.path.join(REPO_ROOT, "matches", "today.json")
 
-def utc_iso(dt_utc: dt.datetime) -> str:
-    return dt_utc.replace(tzinfo=dt.timezone.utc).isoformat().replace("+00:00", "Z")
+with open(CFG_PATH, "r", encoding="utf-8") as f:
+    CFG = yaml.safe_load(f)
 
-def map_status(api_status: str) -> str:
-    s = (api_status or "").upper()
-    if s in ("NS", "PST", "CANC"): return "NS"
-    if s in ("FT", "AET", "PEN"):  return "FT"
+TZ = ZoneInfo(CFG.get("timezone", "Asia/Baghdad"))
+
+# استثناءات
+EXC_LEAGUE = CFG.get("exclude_if_league_matches") or []
+EXC_TEAM   = CFG.get("exclude_if_team_matches") or []
+
+# فلاتر المسموح (اسم+دولة) أو أسماء فقط كاحتياطي
+ALLOW_COMP = CFG.get("allowed_competitions") or []
+ALLOW_LEAGUES_RX = [re.compile(p, re.I) for p in CFG.get("allowed_leagues", [])]
+
+# أولوية القنوات الافتراضية + مرشّحات حسب البطولة
+PRIORITY_PATS = [re.compile(p, re.I) for p in CFG.get("channel_priority_patterns", [])]
+LEAGUE_RULES  = CFG.get("league_channels") or []
+
+# تفضيلات بلد القناة + ماب تحويل الاسم لاسم قناتك
+PREF_COUNTRIES_RX = [re.compile(p, re.I) for p in CFG.get("tv_preferred_countries", [])]
+BROADCAST_MAP = [(re.compile(p, re.I), v) for p, v in (CFG.get("broadcaster_map") or {}).items()]
+
+# المفاتيح
+API_KEY = os.environ.get("APIFOOTBALL_KEY", "")
+SM_TOKEN= os.environ.get("SPORTMONKS_TOKEN", "")
+
+if not API_KEY:
+    print("ERROR: missing APIFOOTBALL_KEY", file=sys.stderr); sys.exit(1)
+
+# ---------- أدوات مساعدة ----------
+def utc_iso(x: dt.datetime) -> str:
+    return x.astimezone(dt.timezone.utc).isoformat().replace("+00:00", "Z")
+
+def map_status(short: str) -> str:
+    s = (short or "").upper()
+    if s in ("NS", "TBD", "PST", "CANC"): return "NS"
+    if s in ("FT", "AET", "PEN"):         return "FT"
     return "LIVE"
 
-def within_today_local(kickoff_utc: dt.datetime, tz: ZoneInfo) -> bool:
-    local = kickoff_utc.astimezone(tz)
-    start = dt.datetime(local.year, local.month, local.day, tzinfo=tz)
-    end = start + dt.timedelta(days=1)
+def human_status(short: str) -> str:
+    s = map_status(short)
+    return {"NS": "قريبًا", "LIVE": "جارية الآن", "FT": "انتهت"}.get(s, "غير معلوم")
+
+def within_today_local(start_utc: dt.datetime) -> bool:
+    local = start_utc.astimezone(TZ)
+    start = dt.datetime(local.year, local.month, local.day, tzinfo=TZ)
+    end   = start + dt.timedelta(days=1)
     return start <= local < end
 
-def fetch_apifootball(date_local: dt.date, api_key: str):
+def any_match(text: str, patterns: list[str]) -> bool:
+    t = text or ""
+    for p in patterns:
+        if re.search(p, t, flags=re.I):
+            return True
+    return False
+
+def match_allowed(league_name: str, league_country: str) -> bool:
+    # إذا محدد allowed_competitions (اسم + دولة)
+    if ALLOW_COMP:
+        for comp in ALLOW_COMP:
+            name_rx    = comp.get("name")
+            country_rx = comp.get("country")
+            ok_name    = re.search(name_rx, league_name or "", re.I) if name_rx else True
+            ok_country = re.search(country_rx, league_country or "", re.I) if country_rx else True
+            if ok_name and ok_country:
+                return True
+        return False
+    # احتياطي: allowed_leagues فقط بالاسم
+    return any(rx.search(league_name or "") for rx in ALLOW_LEAGUES_RX)
+
+def collect_candidates(league_name: str) -> list[str]:
+    out, seen = [], set()
+    for rule in LEAGUE_RULES:
+        pat = rule.get("if_league")
+        if pat and re.search(pat, league_name or "", re.I):
+            for c in rule.get("candidates") or []:
+                if c not in seen:
+                    seen.add(c); out.append(c)
+    return out
+
+def apply_priority(cands: list[str]) -> str | None:
+    for rx in PRIORITY_PATS:
+        for c in cands:
+            if rx.search(c): return c
+    return cands[0] if cands else None
+
+def fallback_channel(league_name: str) -> str:
+    # نعتمد مرشّحات + أولوية
+    cands = collect_candidates(league_name)
+    ch = apply_priority(cands)
+    return ch or "beIN Sports 1"
+
+def map_broadcaster_to_app(name: str | None) -> str | None:
+    if not name: return None
+    for rx, target in BROADCAST_MAP:
+        if rx.search(name): return target
+    return None
+
+# ---------- API Calls ----------
+def fetch_fixtures_apifootball(date_iso: str):
     url = "https://v3.football.api-sports.io/fixtures"
-    params = {"date": date_local.isoformat(), "timezone": "UTC"}
-    headers = {"x-apisports-key": api_key}
+    headers = {"x-apisports-key": API_KEY}
+    params  = {"date": date_iso, "timezone": "UTC"}
     r = requests.get(url, headers=headers, params=params, timeout=30)
     r.raise_for_status()
     return r.json().get("response", [])
 
-def _collect_candidates(league_name: str, league_rules: list[dict]) -> list[str]:
-    cands = []
-    for rule in league_rules or []:
-        pat = rule.get("if_league")
-        lst = rule.get("candidates") or []
-        if pat and re.search(pat, league_name or "", flags=re.IGNORECASE):
-            cands.extend(lst)
-    # unique keep order
-    seen, out = set(), []
-    for x in cands:
-        if x not in seen:
-            seen.add(x); out.append(x)
+def sportmonks_fixtures_by_date(date_iso: str):
+    """نجيب كل مباريات اليوم من سبورت مونكس مع الفرق/الدوري (للمطابقة)."""
+    if not SM_TOKEN: return []
+    url = f"https://api.sportmonks.com/v3/football/fixtures/date/{date_iso}"
+    headers = {"Authorization": SM_TOKEN, "Accept": "application/json"}
+    params  = {"include": "participants;league;country"}
+    r = requests.get(url, headers=headers, params=params, timeout=30)
+    if r.status_code != 200:
+        return []
+    data = r.json().get("data") or []
+    out = []
+    for fx in data:
+        participants = fx.get("participants") or []
+        names = [ (p or {}).get("name","") for p in participants ]
+        out.append({
+            "id": fx.get("id"),
+            "teams": [n.lower().strip() for n in names],
+            "league": (fx.get("league") or {}).get("name","") or "",
+        })
     return out
 
-def _apply_priority(candidates: list[str], priority_patterns: list[str]) -> str | None:
-    for pat in priority_patterns or []:
-        rx = re.compile(pat, flags=re.IGNORECASE)
-        for c in candidates:
-            if rx.search(c): return c
-    return candidates[0] if candidates else None
+def sportmonks_tvstations_for_fixture(fixture_id: int):
+    if not SM_TOKEN: return []
+    url = f"https://api.sportmonks.com/v3/football/tv-stations/fixtures/{fixture_id}"
+    headers = {"Authorization": SM_TOKEN, "Accept": "application/json"}
+    r = requests.get(url, headers=headers, timeout=30)
+    if r.status_code != 200: return []
+    return r.json().get("data") or []
 
-def pick_channel(league_name: str, home: str, away: str, cfg: dict) -> str:
-    key = f"{home}|{away}"
-    for pattern, ch in (cfg.get("overrides") or {}).items():
-        if re.search(pattern, key, flags=re.IGNORECASE):
-            return ch
-    cands = _collect_candidates(league_name, cfg.get("league_channels"))
-    chosen = _apply_priority(cands, cfg.get("channel_priority_patterns"))
-    return chosen or "beIN Sports 1"
+# ---------- مطابقة Fixture بين المصدرين ----------
+def match_fixture_id_sm(home: str, away: str, sm_fixtures: list[dict]) -> int | None:
+    h, a = (home or "").lower().strip(), (away or "").lower().strip()
+    for fx in sm_fixtures:
+        t = fx["teams"]
+        if h in t and a in t:  # مطابقة مباشرة
+            return fx["id"]
+    # محاولة ثانية: احتواء جزئي لو أسماء طويلة
+    for fx in sm_fixtures:
+        join = " ".join(fx["teams"])
+        if h in join and a in join:
+            return fx["id"]
+    return None
 
+def pick_channel_from_tvstations(stations: list[dict]) -> tuple[str | None, str | None]:
+    """يرجع (channel_src, channel_app)"""
+    if not stations: return (None, None)
+    # جرّب حسب تفضيلات الدول أولاً
+    for rx in PREF_COUNTRIES_RX:
+        for st in stations:
+            cname = st.get("name") or ""
+            country = (st.get("country") or {}).get("name","") or ""
+            if rx.search(country):
+                return (cname, map_broadcaster_to_app(cname))
+    # وإلا خذ أول عنصر
+    cname = (stations[0] or {}).get("name")
+    return (cname, map_broadcaster_to_app(cname))
+
+# ---------- Main ----------
 def main():
-    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    out_path = os.path.join(repo_root, "matches", "today.json")
-    cfg_path = os.path.join(repo_root, "scripts", "config.yaml")
+    # التاريخ حسب المنطقة الزمنية (نرسل طلب اليوم نفسه لـ API-FOOTBALL)
+    today_local = dt.datetime.now(TZ).date()
+    date_iso = today_local.isoformat()
 
-    cfg = load_config(cfg_path)
-    tz = ZoneInfo(cfg.get("timezone", "Asia/Baghdad"))
-    allow_patterns = [re.compile(p, flags=re.IGNORECASE) for p in cfg.get("allowed_leagues", [])]
+    fixtures = fetch_fixtures_apifootball(date_iso)
+    sm_fixtures = sportmonks_fixtures_by_date(date_iso)  # قد تكون []
 
-    api_key = os.environ.get("APIFOOTBALL_KEY")
-    if not api_key:
-        print("ERROR: missing APIFOOTBALL_KEY", file=sys.stderr)
-        sys.exit(1)
-
-    today_local = dt.datetime.now(tz).date()
-    fixtures = fetch_apifootball(today_local, api_key)
-
-    result = {"date": today_local.isoformat(), "matches": []}
+    out = {"date": date_iso, "matches": []}
 
     for fx in fixtures:
-        league = (fx.get("league") or {}).get("name") or ""
-        if not any(p.search(league) for p in allow_patterns):
-            continue
+        league_obj = fx.get("league") or {}
+        league     = league_obj.get("name") or ""
+        league_cty = league_obj.get("country") or ""
+
+        # استبعاد شباب/سيدات/رديف بالاسم
+        if any_match(league, EXC_LEAGUE): continue
 
         teams = fx.get("teams") or {}
-        home = (teams.get("home") or {}).get("name") or ""
-        away = (teams.get("away") or {}).get("name") or ""
+        home  = (teams.get("home") or {}).get("name") or ""
+        away  = (teams.get("away") or {}).get("name") or ""
+        if any_match(home, EXC_TEAM) or any_match(away, EXC_TEAM):
+            continue
 
+        # قبول البطولة؟
+        if not match_allowed(league, league_cty):
+            continue
+
+        # وقت البداية ضمن "اليوم" المحلي
         dt_str = ((fx.get("fixture") or {}).get("date") or "").strip()
-        if not dt_str: continue
+        if not dt_str: 
+            continue
         start_utc = dt.datetime.fromisoformat(dt_str.replace("Z", "+00:00")).astimezone(dt.timezone.utc)
-        if not within_today_local(start_utc, tz): continue
+        if not within_today_local(start_utc):
+            continue
 
-        status_short = ((fx.get("fixture") or {}).get("status") or {}).get("short") or ""
+        # الحالة والنتيجة النهائية إن وُجدت
+        status_short = ((fx.get("fixture") or {}).get("status") or {}).get("short","") or ""
         status = map_status(status_short)
 
         goals = fx.get("goals") or {}
         score = None
-        if status == "FT":
-            hg, ag = goals.get("home"), goals.get("away")
-            if isinstance(hg, int) and isinstance(ag, int):
-                score = f"{hg}-{ag}"
+        if status == "FT" and isinstance(goals.get("home"), int) and isinstance(goals.get("away"), int):
+            score = f"{goals['home']}-{goals['away']}"
 
-        channel = pick_channel(league, home, away, cfg)
-        match_id = f"{home[:10]}-{away[:10]}-{today_local.isoformat()}".replace(" ", "")
+        # قناة من Sportmonks (إن أمكن)
+        channel_src = None
+        channel_app = None
+        if sm_fixtures and SM_TOKEN:
+            sm_id = match_fixture_id_sm(home, away, sm_fixtures)
+            if sm_id:
+                stations = sportmonks_tvstations_for_fixture(sm_id)
+                channel_src, channel_app = pick_channel_from_tvstations(stations)
 
-        result["matches"].append({
-            "id": match_id,
+        # fallback لو ما لقيت قناة من Sportmonks
+        if not channel_app:
+            channel_app = fallback_channel(league)
+
+        # اكتب النتيجة
+        out["matches"].append({
+            "id": f"{home[:10]}-{away[:10]}-{date_iso}".replace(" ", ""),
             "home": home,
             "away": away,
-            "channel": channel,
+            "league": league,
+            "league_country": league_cty,
+            "channel_src": channel_src,         # القناة الرسمية من المزود (قد تكون None)
+            "channel": channel_app,             # اسم قناتك داخل التطبيق
             "start_utc": utc_iso(start_utc),
-            "status": status,   # NS / LIVE / FT
+            "status": status,                   # NS/LIVE/FT
+            "status_label": human_status(status_short),
             "score": score
         })
 
-    result["matches"].sort(key=lambda m: m["start_utc"])
+    out["matches"].sort(key=lambda m: m["start_utc"])
+    os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
+    with open(OUT_PATH, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
 
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(result, f, ensure_ascii=False, indent=2)
-
-    print(f"Wrote {out_path} with {len(result['matches'])} matches.")
+    print(f"Wrote {OUT_PATH} with {len(out['matches'])} matches.")
 
 if __name__ == "__main__":
     main()
