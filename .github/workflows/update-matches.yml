@@ -26,6 +26,8 @@ jobs:
         env:
           APIFOOTBALL_KEY: ${{ secrets.APIFOOTBALL_KEY }}
           SPORTMONKS_TOKEN: ${{ secrets.SPORTMONKS_TOKEN }}   # 👈 أضف هذا
+          FORCE_DATE: "2025-09-13"      # يوم سبت للتجربة فقط
+          DEBUG_MATCHES: "1"            # يطبع أسباب الاستبعاد في اللوج
         run: |
           python scripts/build_today_matches.py
 
