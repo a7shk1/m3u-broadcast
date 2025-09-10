@@ -3,36 +3,97 @@ name: Update Matches (today.json)
 on:
   schedule:
     - cron: "*/15 * * * *"   # كل 15 دقيقة (UTC)
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      force_date:
+        description: "YYYY-MM-DD (اختياري للاختبار)"
+        required: false
+      debug:
+        description: "DEBUG_MATCHES (0/1)"
+        required: false
 
 permissions:
-  contents: write            # 👈 ضروري يسمح بالـ commit/push
+  contents: write            # ضروري للسماح بالـ commit/push
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Show ref
+        run: |
+          echo "ref=$GITHUB_REF"
+          echo "sha=$GITHUB_SHA"
+
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure tzdata (for timezones)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tzdata
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install deps
+      - name: Python & pip
         run: |
+          python -V
           python -m pip install --upgrade pip
           pip install requests pyyaml
+
+      - name: Tree before
+        run: |
+          ls -la
+          echo "---- scripts ----"
+          ls -la scripts || true
+
+      - name: Quick API-FOOTBALL ping
+        env:
+          APIFOOTBALL_KEY: ${{ secrets.APIFOOTBALL_KEY }}
+        run: |
+          python - <<'PY'
+          import os, requests
+          k=os.environ.get("APIFOOTBALL_KEY","")
+          assert k, "APIFOOTBALL_KEY missing"
+          r=requests.get("https://v3.football.api-sports.io/status",
+                         headers={"x-apisports-key": k}, timeout=20)
+          print("[API-FOOTBALL STATUS]", r.status_code, r.text[:300])
+          PY
+
+      - name: Quick Sportmonks ping
+        env:
+          SPORTMONKS_TOKEN: ${{ secrets.SPORTMONKS_TOKEN }}
+        run: |
+          python - <<'PY'
+          import os, requests, datetime as dt
+          t=os.environ.get("SPORTMONKS_TOKEN","")
+          if not t:
+            print("[SM] no token set (skipping)"); raise SystemExit(0)
+          date=dt.date.today().isoformat()
+          url=f"https://api.sportmonks.com/v3/football/fixtures/date/{date}"
+          r=requests.get(url, headers={"Authorization": t, "Accept":"application/json"}, timeout=20)
+          print("[SM STATUS]", r.status_code, r.text[:200])
+          PY
 
       - name: Build today.json
         env:
           APIFOOTBALL_KEY: ${{ secrets.APIFOOTBALL_KEY }}
           SPORTMONKS_TOKEN: ${{ secrets.SPORTMONKS_TOKEN }}
-          FORCE_DATE: "2025-09-13"      # للتجربة فقط
-          DEBUG_MATCHES: "1"            # طباعة أسباب الاستبعاد
+          FORCE_DATE: ${{ github.event.inputs.force_date }}
+          DEBUG_MATCHES: ${{ github.event.inputs.debug }}
         run: |
           python scripts/build_today_matches.py
+
+      - name: Show output
+        run: |
+          echo "---- matches dir ----"
+          ls -la matches || true
+          echo "---- today.json ----"
+          cat matches/today.json || true
 
       - name: Commit & push if changed
         uses: stefanzweifel/git-auto-commit-action@v5
