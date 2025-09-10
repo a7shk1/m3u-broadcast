@@ -25,10 +25,11 @@ LEAGUE_RULES  = CFG.get("league_channels") or []
 PREF_COUNTRIES_RX = [re.compile(p, re.I) for p in CFG.get("tv_preferred_countries", [])]
 BROADCAST_MAP = [(re.compile(p, re.I), v) for p, v in (CFG.get("broadcaster_map") or {}).items()]
 
-# ---------- مفتاح SoccersAPI ----------
-SA_SECRET = os.environ.get("SOCCERAPI", "")
-if not SA_SECRET:
-    print("ERROR: missing SOCCERAPI", file=sys.stderr)
+# ---------- مفاتيح SoccersAPI ----------
+SA_USER  = os.environ.get("SOCCERAPI_USER", "")
+SA_TOKEN = os.environ.get("SOCCERAPI_TOKEN", "")
+if not SA_USER or not SA_TOKEN:
+    print("ERROR: missing SOCCERAPI_USER or SOCCERAPI_TOKEN", file=sys.stderr)
     sys.exit(1)
 
 SA_BASE = "https://api.soccersapi.com/v2.2"
@@ -100,8 +101,8 @@ def map_broadcaster_to_app(name: str | None) -> str | None:
 
 # ---------- استدعاءات API ----------
 def sa_get(path: str, **params):
-    url = f"{SA_BASE}{path}?{SA_SECRET}"
-    r = requests.get(url, params=params, timeout=30)
+    q = {"user": SA_USER, "token": SA_TOKEN, **params}
+    r = requests.get(f"{SA_BASE}{path}", params=q, timeout=30)
     if r.status_code != 200:
         raise RuntimeError(f"SoccersAPI {path} failed: {r.status_code} {r.text[:200]}")
     return r.json()
