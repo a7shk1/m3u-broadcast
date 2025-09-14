@@ -1,0 +1,33 @@
+name: Update generalsports (Match!/TNT/Sky)
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"       # كل 5 دقائق
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: python -m pip install --upgrade pip requests
+
+      - name: Pull & update channels
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE_URL: "https://raw.githubusercontent.com/abusaeeidx/CricHd-playlists-Auto-Update-permanent/refs/heads/main/ALL.m3u"
+          DEST_RAW_URL: "https://raw.githubusercontent.com/a7shk1/m3u-broadcast/refs/heads/main/generalsports.m3u"
+          GITHUB_REPO: ${{ github.repository }}
+          GITHUB_BRANCH: "main"
+          DEST_REPO_PATH: "generalsports.m3u"
+          COMMIT_MESSAGE: "chore: auto-update generalsports (Match!/TNT/Sky)"
+        run: python scripts/pull_channels_and_update.py
