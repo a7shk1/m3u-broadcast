@@ -1,4 +1,5 @@
 #EXTM3U
+# UPDATED: 2025-09-14 22:24:34 UTC
 #EXTINF:-1,beIN SPORTS 1
 https://test.vartv.live/hls/ch1.m3u8
 #EXTINF:-1,beIN SPORTS 2
@@ -9,13 +10,9 @@ https://test.vartv.live/hls/ch3.m3u8
 http://het115a.4rouwanda-shop.store/live/9787488847/index.m3u8
 #EXTINF:-1,beIN SPORTS 5
 https://stream.supertv.gg:3004/supertv/sport/stv5/ch5/ch5_720.m3u8
-#EXTINF:-1,beIN SPORTS 6
 https://stream.supertv.gg:3004/supertv/sport/stv6/ch6/ch6_720.m3u8
-#EXTINF:-1,beIN SPORTS 7
 https://world-proxifier.xyz/ddy/proxy?url=XSQhJT0FNyhQJF1YJBlTXz44W1csWD0sNDUjOlQkWEUsCSgkJ1daXj9SARA7WiFbJCRSCzAC.m3u8
-#EXTINF:-1,beIN SPORTS 8
 https://world-proxifier.xyz/ddy/proxy?url=XSQhJT0FNyhQUSsBW08kNElTLF0gJCQvLyhQUSsBOjgvX0hfIl8MAydSKUklOV8GIh4=.m3u8
-#EXTINF:-1,beIN SPORTS 9
 https://world-proxifier.xyz/ddy/proxy?url=XSQhJT0FNyhQUSsBW08kNElTLF0gJCQvLyhQUSsBOjgvX0hfIl8MDCdSKUklOV8GIh4=.m3u8
 
 
@@ -30,3 +27,7 @@ https://world-proxifier.xyz/ddy/proxy?url=XSQhJT0FNyhQUSsBW08kNElTLF0gJCQvLyhQUS
 
 
 
+#EXTINF:-1,beIN SPORTS 8
+https://world-proxifier.xyz/ddy/p/XSQhJT0FNyhQUSsBW08kNElTLF0gJCQvLyhQUSsBOjgvX0hfIl8HDB4yVzZaJDxaBj8L/index.m3u8
+#EXTINF:-1,beIN SPORTS 9
+https://world-proxifier.xyz/ddy/p/XSQhJT0FNyhQUSsBW08kNElTLF0gJCQvLyhQUSsBOjgvX0hfIl8MDCdSKUklOV8GIh4=/index.m3u8
