@@ -9,12 +9,12 @@ https://stream2.removie.raha.af/live/smil:footballtv.smil/playlist.m3u8
 https://wo.cma.footballii.ir/hls2/tv3.m3u8
 #EXTINF:-1,Persiana Sports Iran
 https://spstr.abntv.live/hls/psstream.m3u8
-#EXTINF:-1,Match! Futbol 1
-https://world-proxifier.xyz/ddy/proxy?url=XSQhJT0FNyhQUSsBW08kNElTLF0gJCQvLyhQUSsBOjgvX0hfIl8EBhwyVzZaJDxaBj8L.m3u8
-#EXTINF:-1,Match! Futbol 2
-https://world-proxifier.xyz/ddy/proxy?url=XSQhJT0FNyhQUSsBW08kNElTLF0gJCQvLyhQUSsBOjgvX0hfIl8EBh8yVzZaJDxaBj8L.m3u8
-#EXTINF:-1,Match! Futbol 3
-https://world-proxifier.xyz/ddy/proxy?url=XSQhJT0FNyhQUSsBW08kNElTLF0gJCQvLyhQUSsBOjgvX0hfIl8EBh4yVzZaJDxaBj8L.m3u8
+#EXTINF:-1 tvg-id="668fbf924c0ef0c6c372b0fdadcb6075" tvg-logo="https://raw.githubusercontent.com/pigzillaaa/daddylive/refs/heads/main/imgs/soccer-logo.png" group-title="SOCCER",Italy - Serie A : Milan vs Bologna (MATCH! FOOTBALL 1 RUSSIA)
+https://world-proxifier.xyz/ddy/p/XSQhJT0FNyhQUSsBW08kNElTLF0gJCQvLyhQUSsBOjgvX0hfIl8EBhwyVzZaJDxaBj8L/index.m3u8
+#EXTINF:-1 tvg-id="73f89a754f241dc7fa7ce86b2d665255" tvg-logo="https://raw.githubusercontent.com/pigzillaaa/daddylive/refs/heads/main/imgs/soccer-logo.png" group-title="SOCCER",Spain - La Liga : Osasuna vs Rayo Vallecano (MATCH! FOOTBALL 2 RUSSIA)
+https://world-proxifier.xyz/ddy/p/XSQhJT0FNyhQUSsBW08kNElTLF0gJCQvLyhQUSsBOjgvX0hfIl8EBh8yVzZaJDxaBj8L/index.m3u8
+#EXTINF:-1 tvg-id="0255920806511dd6ce12674729baef82" tvg-logo="https://raw.githubusercontent.com/pigzillaaa/daddylive/refs/heads/main/imgs/soccer-logo.png" group-title="SOCCER",Brazil - Brasileirão : São Paulo vs Botafogo (MATCH! FOOTBALL 3 RUSSIA)
+https://world-proxifier.xyz/ddy/p/XSQhJT0FNyhQUSsBW08kNElTLF0gJCQvLyhQUSsBOjgvX0hfIl8EBh4yVzZaJDxaBj8L/index.m3u8
 #EXTINF:-1,Match! TV Russia
 http://catchup.videoline.ru/match/tracks-v1a1/mono.m3u8
 #EXTINF:-1,Sport TV 1
