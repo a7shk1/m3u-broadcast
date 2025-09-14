@@ -1,33 +1,35 @@
-name: Update generalsports (Match!/TNT/Sky)
+name: Update Premier League M3U
 
 on:
   schedule:
-    - cron: "*/5 * * * *"       # كل 5 دقائق
-  workflow_dispatch: {}
+    - cron: "*/5 * * * *"   # كل 5 دقائق
+  workflow_dispatch:        # يدوي إذا تحب
 
 permissions:
   contents: write
 
 jobs:
-  run:
+  update-premierleague:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install deps
-        run: python -m pip install --upgrade pip requests
+      - name: Install dependencies
+        run: pip install -r requirements.txt || true
 
-      - name: Pull & update channels
+      - name: Run update script
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SOURCE_URL: "https://raw.githubusercontent.com/abusaeeidx/CricHd-playlists-Auto-Update-permanent/refs/heads/main/ALL.m3u"
-          DEST_RAW_URL: "https://raw.githubusercontent.com/a7shk1/m3u-broadcast/refs/heads/main/generalsports.m3u"
-          GITHUB_REPO: ${{ github.repository }}
+          DEST_RAW_URL: "https://raw.githubusercontent.com/a7shk1/m3u-broadcast/refs/heads/main/premierleague.m3u"
+          GITHUB_REPO: "a7shk1/m3u-broadcast"
           GITHUB_BRANCH: "main"
-          DEST_REPO_PATH: "generalsports.m3u"
-          COMMIT_MESSAGE: "chore: auto-update generalsports (Match!/TNT/Sky)"
+          DEST_REPO_PATH: "premierleague.m3u"
+          COMMIT_MESSAGE: "🔄 auto-update premierleague.m3u (every 5min)"
         run: python scripts/pull_channels_and_update.py
