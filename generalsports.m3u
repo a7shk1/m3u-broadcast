@@ -23,3 +23,19 @@ https://maldivesn.net/hilaytv/sporttv1
 https://maldivesn.net/hilaytv/sporttv2
 #EXTINF:-1,Real Madrid TV 
 https://b63ea32a.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/VENMVFZQbHVzX1JlYWxNYWRyaWRfSExT/playlist.m3u8
+
+# --- TNT 1 ---
+#EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/abusaeeidx/Tv-Channel-Logo/heads/main/CricHD/runded/tnt.png", TNT 1
+https://d5.merichunidya.com:1686/hls/bbtsp1.m3u8?md5=mMWxIc_aiSriAayGynsL7Q&expires=1757889595
+
+# --- TNT 2 ---
+#EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/abusaeeidx/Tv-Channel-Logo/heads/main/CricHD/runded/tnt.png", TNT 2
+https://d7.merichunidya.com:1686/hls/bbtsp2.m3u8?md5=28YGINxh4fhsFUS8EFYPJw&expires=1757889595
+
+# --- Sky Sports Main Event ---
+#EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/abusaeeidx/Tv-Channel-Logo/heads/main/CricHD/runded/18-by-xfireflix.png", Sky Sports Main Event
+https://d9.merichunidya.com:1686/hls/skysme.m3u8?md5=dcbxKiFsj4momOwph3YV6w&expires=1757889594
+
+# --- Sky Sports Premier League ---
+#EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/abusaeeidx/Tv-Channel-Logo/heads/main/CricHD/runded/43-by-xfireflix.png", Sky Sports Premier League
+https://d5.merichunidya.com:1686/hls/skysprem.m3u8?md5=mHMAiUbH5eN4APejozSNDQ&expires=1757889598
