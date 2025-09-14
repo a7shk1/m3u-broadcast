@@ -1,0 +1,19 @@
+name: Update beIN 6-9
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # كل 5 دقائق
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install requests
+      - run: python scripts/pull_bein_6to9.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
