@@ -1,147 +1,225 @@
-name: Update premierleague.m3u (TNT/Sky only)
+# scripts/pull_channels_and_update.py
+# -*- coding: utf-8 -*-
+"""
+يسحب روابط القنوات (TNT 1, TNT 2, Sky Sports Main Event UK, Sky Sports Premier League UK)
+من RAW مصدر (ALL.m3u) ويقوم بتحديث ملف وجهة (premierleague.m3u) باستبدال **سطر الرابط فقط**
+الذي يلي #EXTINF لنفس القناة، مع الحفاظ على مكانها ونص الـEXTINF كما هو.
+لا يضيف قنوات جديدة إن لم توجد في الملف الهدف.
+"""
 
-on:
-  workflow_dispatch:
-  schedule:
-    - cron: "*/30 * * * *"  # كل 30 دقيقة (عدّل إذا تريد)
+import os
+import re
+import sys
+import base64
+from pathlib import Path
+from typing import List, Tuple, Dict, Optional
+import requests
 
-env:
-  # نفس المعلمات القديمة تمامًا (تقدر تغيّرها من هنا أو كـ Secrets/Vars)
-  SOURCE_URL: "https://raw.githubusercontent.com/DisabledAbel/daddylivehd-m3u/f582ae100c91adf8c8db905a8f97beb42f369a0b/daddylive-events.m3u8"
-  DEST_RAW_URL: "https://raw.githubusercontent.com/a7shk1/m3u-broadcast/refs/heads/main/premierleague.m3u"
-  GITHUB_REPO: "a7shk1/m3u-broadcast"
-  GITHUB_BRANCH: "main"
-  DEST_REPO_PATH: "premierleague.m3u"
-  COMMIT_MESSAGE: "chore: update premierleague URLs (Match!/TNT/Sky)"
-  OUTPUT_LOCAL_PATH: "./out/premierleague.m3u"
-  TIMEOUT: "25"
-  VERIFY_SSL: "true"
+# ===== إعدادات =====
+# (لم يتم تغيير أي معلمات/بيئات هنا)
 
-jobs:
-  run:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.GITHUB_BRANCH }}
+SOURCE_URL = os.getenv(
+    "SOURCE_URL",
+    "https://raw.githubusercontent.com/DisabledAbel/daddylivehd-m3u/f582ae100c91adf8c8db905a8f97beb42f369a0b/daddylive-events.m3u8"
+)
 
-      - name: Update M3U (TNT 1/2 + Sky Main Event/PL فقط)
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
+DEST_RAW_URL = os.getenv(
+    "DEST_RAW_URL",
+    "https://raw.githubusercontent.com/a7shk1/m3u-broadcast/refs/heads/main/premierleague.m3u"
+)
 
-          curl_opts=("--max-time" "${TIMEOUT}" "--fail" "--show-error" "--location")
-          if [ "${VERIFY_SSL}" != "true" ]; then curl_opts+=("-k"); fi
+GITHUB_TOKEN   = os.getenv("GITHUB_TOKEN", "").strip()  # repo contents scope
+GITHUB_REPO    = os.getenv("GITHUB_REPO", "a7shk1/m3u-broadcast")
+GITHUB_BRANCH  = os.getenv("GITHUB_BRANCH", "main")
+DEST_REPO_PATH = os.getenv("DEST_REPO_PATH", "premierleague.m3u")
+COMMIT_MESSAGE = os.getenv("COMMIT_MESSAGE", "chore: update premierleague URLs (Match!/TNT/Sky)")
 
-          # حمّل المصدر والوجهة
-          curl "${curl_opts[@]}" "$SOURCE_URL" -o /tmp/src.m3u
-          curl "${curl_opts[@]}" "$DEST_RAW_URL" -o /tmp/dest.m3u || true
+OUTPUT_LOCAL_PATH = os.getenv("OUTPUT_LOCAL_PATH", "./out/premierleague.m3u")
 
-          # إذا الوجهة فارغة أنشئ هيدر
-          if [ ! -s /tmp/dest.m3u ]; then echo "#EXTM3U" > /tmp/dest.m3u; fi
+TIMEOUT = 25
+VERIFY_SSL = True
 
-          # بايثون مصغّر داخل الوركفلو (بدون سكربت خارجي)
-          python - <<'PY'
-import os, re, sys, base64, pathlib, requests
-
-SOURCE_URL    = os.environ["SOURCE_URL"]
-DEST_PATH     = os.environ.get("DEST_REPO_PATH","premierleague.m3u")
-VERIFY_SSL    = os.environ.get("VERIFY_SSL","true").lower() == "true"
-TIMEOUT       = int(os.environ.get("TIMEOUT","25"))
-
-WANTED = [
-  "TNT 1",
-  "TNT 2",
-  "Sky Sports Main Event UK",
-  "Sky Sports Premier League UK",
+# ===== القنوات المطلوبة فقط =====
+WANTED_CHANNELS = [
+    "TNT 1",
+    "TNT 2",
+    "Sky Sports Main Event UK",
+    "Sky Sports Premier League UK",
 ]
 
-ALIASES = {
-  "TNT 1": [re.compile(r"\btnt\s*(sports)?\s*1\b", re.I)],
-  "TNT 2": [re.compile(r"\btnt\s*(sports)?\s*2\b", re.I)],
-  "Sky Sports Main Event UK": [re.compile(r"\bsky\s*sports\s*main\s*event\b", re.I)],
-  "Sky Sports Premier League UK": [re.compile(r"\bsky\s*sports\s*premier\s*league\b", re.I)],
+# Aliases/أنماط مطابقة مرنة لسطر EXTINF (لهذه القنوات فقط)
+ALIASES: Dict[str, List[re.Pattern]] = {
+    # TNT Sports 1/2 قد تُكتب بصيغ متعددة
+    "TNT 1": [
+        re.compile(r"\btnt\s*(sports)?\s*1\b", re.I),
+        re.compile(r"\btnt\s*1\b", re.I),
+    ],
+    "TNT 2": [
+        re.compile(r"\btnt\s*(sports)?\s*2\b", re.I),
+        re.compile(r"\btnt\s*2\b", re.I),
+    ],
+    # Sky Sports Main Event
+    "Sky Sports Main Event UK": [
+        re.compile(r"\bsky\s*sports\s*main\s*event\b", re.I),
+        re.compile(r"\bsky\s*sports\s*main-event\b", re.I),
+    ],
+    # Sky Sports Premier League
+    "Sky Sports Premier League UK": [
+        re.compile(r"\bsky\s*sports\s*premier\s*league\b", re.I),
+        re.compile(r"\bss\s*premier\s*league\b", re.I),
+    ],
 }
 
-def pairs(text):
-    ls = [l.rstrip("\n") for l in text.splitlines()]
-    out = []
-    i=0
-    while i < len(ls):
-        ln = ls[i].strip()
+# ===== وظائف مساعدة =====
+
+def fetch_text(url: str) -> str:
+    r = requests.get(url, timeout=TIMEOUT, verify=VERIFY_SSL)
+    r.raise_for_status()
+    return r.text
+
+def parse_m3u_pairs(m3u_text: str) -> List[Tuple[str, Optional[str]]]:
+    """يحّول ملف m3u إلى [(#EXTINF..., url_or_None), ...]"""
+    lines = [ln.rstrip("\n") for ln in m3u_text.splitlines()]
+    out: List[Tuple[str, Optional[str]]] = []
+    i = 0
+    while i < len(lines):
+        ln = lines[i].strip()
         if ln.startswith("#EXTINF"):
-            url=None
-            if i+1 < len(ls):
-                nxt = ls[i+1].strip()
+            url = None
+            if i + 1 < len(lines):
+                nxt = lines[i + 1].strip()
                 if nxt and not nxt.startswith("#"):
-                    url=nxt
-            out.append((ls[i], url))
-            i+=2; continue
-        i+=1
+                    url = nxt
+            out.append((ln, url))
+            i += 2
+            continue
+        i += 1
     return out
 
-def match(extinf, pats):
-    return any(p.search(extinf) for p in pats)
+def find_first_match(extinf: str, patterns: List[re.Pattern]) -> bool:
+    return any(p.search(extinf) for p in patterns)
 
-# اقرأ الملفات اللي حملناها بالخطوة السابقة
-with open("/tmp/src.m3u","r",encoding="utf-8",errors="ignore") as f:
-    src_text = f.read()
-with open("/tmp/dest.m3u","r",encoding="utf-8",errors="ignore") as f:
-    dest_text = f.read()
+def pick_wanted(source_pairs: List[Tuple[str, Optional[str]]]) -> Dict[str, str]:
+    """
+    يرجّع dict: wanted_name -> stream_url
+    يلتقط أول تطابق لكل قناة مطلوبة من المصدر. يحتفظ بالرابط فقط.
+    """
+    picked: Dict[str, str] = {}
+    for extinf, url in source_pairs:
+        if not url:
+            continue
+        for official_name in WANTED_CHANNELS:
+            if official_name in picked:
+                continue
+            pats = ALIASES.get(official_name, [])
+            if find_first_match(extinf, pats):
+                picked[official_name] = url
+    return picked
 
-picked = {}
-for extinf, url in pairs(src_text):
-    if not url: continue
-    for name in WANTED:
-        if name in picked: continue
-        if match(extinf, ALIASES[name]): picked[name] = url
+def upsert_github_file(repo: str, branch: str, path_in_repo: str, content_bytes: bytes, message: str, token: str):
+    base = "https://api.github.com"
+    url = f"{base}/repos/{repo}/contents/{path_in_repo}"
+    headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
 
-lines = [ln.rstrip("\n") for ln in dest_text.splitlines()]
-if not lines or not lines[0].strip().upper().startswith("#EXTM3U"):
-    lines = ["#EXTM3U"] + lines
+    sha = None
+    get_res = requests.get(url, headers=headers, params={"ref": branch}, timeout=TIMEOUT)
+    if get_res.status_code == 200:
+        sha = get_res.json().get("sha")
 
-out = []
-i=0
-while i < len(lines):
-    ln = lines[i]
-    if ln.strip().startswith("#EXTINF"):
-        matched=None
-        for name in WANTED:
-            if match(ln, ALIASES[name]):
-                matched=name; break
-        if matched and matched in picked:
-            out.append(ln)
-            new_url = picked[matched]
-            if i+1 < len(lines) and lines[i+1].strip() and not lines[i+1].strip().startswith("#"):
-                out.append(new_url); i+=2; continue
-            else:
-                out.append(new_url); i+=1; continue
-    out.append(ln); i+=1
+    payload = {
+        "message": message,
+        "content": base64.b64encode(content_bytes).decode("utf-8"),
+        "branch": branch,
+    }
+    if sha:
+        payload["sha"] = sha
 
-final_text = "\n".join(out).rstrip()+"\n"
-pathlib.Path(DEST_PATH).parent.mkdir(parents=True, exist_ok=True)
-with open(DEST_PATH,"w",encoding="utf-8") as f:
-    f.write(final_text)
-print("[i] wrote:", DEST_PATH)
-PY
+    put_res = requests.put(url, headers=headers, json=payload, timeout=TIMEOUT)
+    if put_res.status_code not in (200, 201):
+        raise RuntimeError(f"GitHub PUT failed: {put_res.status_code} {put_res.text}")
+    return put_res.json()
 
-      - name: Commit & Push if changed
-        shell: bash
-        run: |
-          set -e
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+def render_updated_replace_urls_only(dest_text: str, picked_urls: Dict[str, str]) -> str:
+    """
+    يمرّ على ملف الوجهة سطرًا-بسطر:
+      - إذا صادف #EXTINF يطابق إحدى القنوات المطلوبة وكان لدينا URL جديد لها،
+        يبقي سطر الـEXTINF كما هو ويستبدل **السطر التالي** (إذا كان URL) بالرابط الجديد.
+      - إذا لم يكن هناك سطر URL بعد الـEXTINF (حالة نادرة) سيقوم بإدراجه.
+      - لا يضيف قنوات غير موجودة أصلًا.
+    """
+    lines = [ln.rstrip("\n") for ln in dest_text.splitlines()]
+    if not lines or not lines[0].strip().upper().startswith("#EXTM3U"):
+        lines = ["#EXTM3U"] + lines
 
-          if git status --porcelain | grep -q .; then
-            git add "$DEST_REPO_PATH"
-            git commit -m "${COMMIT_MESSAGE}"
-            git push origin "${GITHUB_BRANCH}"
-            echo "Changes pushed."
-          else
-            echo "No changes."
-          fi
+    out: List[str] = []
+    i = 0
+    while i < len(lines):
+        ln = lines[i]
+        if ln.strip().startswith("#EXTINF"):
+            matched_name = None
+            for official_name in WANTED_CHANNELS:
+                pats = ALIASES.get(official_name, [])
+                if find_first_match(ln, pats):
+                    matched_name = official_name
+                    break
+
+            if matched_name and matched_name in picked_urls:
+                out.append(ln)
+                new_url = picked_urls[matched_name]
+
+                if i + 1 < len(lines) and lines[i + 1].strip() and not lines[i + 1].strip().startswith("#"):
+                    out.append(new_url)
+                    i += 2
+                    continue
+                else:
+                    out.append(new_url)
+                    i += 1
+                    continue
+
+        out.append(ln)
+        i += 1
+
+    return "\n".join(out).rstrip() + "\n"
+
+def main():
+    # 1) حمّل المصدر والوجهة
+    src_text = fetch_text(SOURCE_URL)
+    dest_text = fetch_text(DEST_RAW_URL)
+
+    # 2) التقط روابط القنوات المطلوبة من المصدر
+    pairs = parse_m3u_pairs(src_text)
+    picked_urls = pick_wanted(pairs)
+
+    print("[i] Picked URLs:")
+    for n in WANTED_CHANNELS:
+        tag = "✓" if n in picked_urls else "x"
+        print(f"  {tag} {n}")
+
+    # 3) حدّث الملف الهدف باستبدال الروابط فقط
+    updated = render_updated_replace_urls_only(dest_text, picked_urls)
+
+    # 4) اكتب إلى GitHub أو محليًا
+    token = GITHUB_TOKEN
+    if token:
+        print(f"[i] Updating GitHub: {GITHUB_REPO}@{GITHUB_BRANCH}:{DEST_REPO_PATH}")
+        res = upsert_github_file(
+            repo=GITHUB_REPO,
+            branch=GITHUB_BRANCH,
+            path_in_repo=DEST_REPO_PATH,
+            content_bytes=updated.encode("utf-8"),
+            message=COMMIT_MESSAGE,
+            token=token,
+        )
+        print("[✓] Updated:", res.get("content", {}).get("path"))
+    else:
+        p = Path(OUTPUT_LOCAL_PATH)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(updated, encoding="utf-8")
+        print("[i] Wrote locally to:", p.resolve())
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        print("[x] Error:", e)
+        sys.exit(1)
