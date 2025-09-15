@@ -2,10 +2,10 @@
 #EXTINF:-1,TNT SPORTS
 http://181.78.201.70:8000/play/a0tx/index.m3u8
 #EXTINF:-1,TNT SPORTS 1
-https://d1.merichunidya.com:1686/hls/bbtsp1.m3u8?md5=HYRLZ83aZM6JQLs4mbc0pQ&expires=1757935710
+https://d3.merichunidya.com:1686/hls/bbtsp1.m3u8?md5=m64m_6FRm0OfnG0qjGlggQ&expires=1757936706
 #EXTINF:-1,TNT SPORTS 2
-https://d3.merichunidya.com:1686/hls/bbtsp2.m3u8?md5=0rtavPtfZivWAI1igBsnIQ&expires=1757935710
+https://d3.merichunidya.com:1686/hls/bbtsp2.m3u8?md5=JUlNML5rfmOx8fniPhWQng&expires=1757936706
 #EXTINF:-1,Sky Sports Main Event HD
-https://d1.merichunidya.com:1686/hls/skysme.m3u8?md5=f26yCOXYjl4qOWGdJcwwOw&expires=1757935710
+https://d6.merichunidya.com:1686/hls/skysme.m3u8?md5=KKKcrqplGtzVBXiWSOulbA&expires=1757936706
 #EXTINF:-1,Sky Premier League HD
 https://d4.merichunidya.com:1686/hls/skysprem.m3u8?md5=xwmYXF1u7AiNR06VUudh6w&expires=1757886787
