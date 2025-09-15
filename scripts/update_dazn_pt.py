@@ -1,8 +1,8 @@
 # scripts/update_dazn_pt.py
 # -*- coding: utf-8 -*-
 """
-يسحب روابط قنوات (DAZN ELEVEN 1/2/3 PORTUGAL) من المصدر
-ويحدّث ملف dazn.m3u باستبدال **سطر الرابط فقط** الذي يلي #EXTINF لنفس القناة،
+يجلب روابط قنوات DAZN ELEVEN PT (1/2/3) من المصدر
+ويحدّث dazn.m3u باستبدال **سطر الرابط فقط** الذي يلي #EXTINF لنفس القناة،
 بدون تغيير نص الـEXTINF أو ترتيب القنوات. لا يضيف قنوات جديدة.
 """
 
@@ -14,63 +14,75 @@ from pathlib import Path
 from typing import List, Tuple, Dict, Optional
 import requests
 
-# ===== إعدادات (بنفس أسماء المعلمات) =====
+# ===== إعدادات (نفس المعلمات) =====
 
 SOURCE_URL = os.getenv(
     "SOURCE_URL",
-    # نفس مصدرك القديم
     "https://raw.githubusercontent.com/DisabledAbel/daddylivehd-m3u/f582ae100c91adf8c8db905a8f97beb42f369a0b/daddylive-events.m3u8"
 )
 
-# الوجهة الجديدة: dazn.m3u
 DEST_RAW_URL = os.getenv(
     "DEST_RAW_URL",
     "https://raw.githubusercontent.com/a7shk1/m3u-broadcast/refs/heads/main/dazn.m3u"
 )
 
-# للتحديث المباشر على GitHub (اختياري):
-GITHUB_TOKEN   = os.getenv("GITHUB_TOKEN", "").strip()  # repo contents scope
+GITHUB_TOKEN   = os.getenv("GITHUB_TOKEN", "").strip()
 GITHUB_REPO    = os.getenv("GITHUB_REPO", "a7shk1/m3u-broadcast")
 GITHUB_BRANCH  = os.getenv("GITHUB_BRANCH", "main")
 DEST_REPO_PATH = os.getenv("DEST_REPO_PATH", "dazn.m3u")
 COMMIT_MESSAGE = os.getenv("COMMIT_MESSAGE", "chore: update DAZN ELEVEN PT (1/2/3) URLs")
-
-# للكتابة محليًا إن ماكو توكن:
 OUTPUT_LOCAL_PATH = os.getenv("OUTPUT_LOCAL_PATH", "./out/dazn.m3u")
 
 TIMEOUT = 25
 VERIFY_SSL = True
 
-# ===== القنوات المطلوبة فقط =====
+# ===== القنوات المطلوبة =====
 WANTED_CHANNELS = [
     "DAZN ELEVEN 1 PORTUGAL",
     "DAZN ELEVEN 2 PORTUGAL",
     "DAZN ELEVEN 3 PORTUGAL",
 ]
 
-# مطابقة مرنة للسورس (نبحث على كامل سطر EXTINF)
+# ===== مطابقة السورس (EXTINF كامل) =====
 SOURCE_PATTERNS: Dict[str, List[re.Pattern]] = {
     "DAZN ELEVEN 1 PORTUGAL": [
         re.compile(r"\bdazn\s*eleven\s*1\b.*\b(portugal|pt)\b", re.I),
-        re.compile(r"\(.*dazn\s*eleven\s*1.*(portugal|pt).*?\)", re.I),
+        re.compile(r"\beleven\s*sports?\s*1\b.*\b(portugal|pt)\b", re.I),
+        re.compile(r"\(.*(dazn\s*eleven|eleven\s*sports?)\s*1.*(portugal|pt).*?\)", re.I),
     ],
     "DAZN ELEVEN 2 PORTUGAL": [
         re.compile(r"\bdazn\s*eleven\s*2\b.*\b(portugal|pt)\b", re.I),
-        re.compile(r"\(.*dazn\s*eleven\s*2.*(portugal|pt).*?\)", re.I),
+        re.compile(r"\beleven\s*sports?\s*2\b.*\b(portugal|pt)\b", re.I),
+        re.compile(r"\(.*(dazn\s*eleven|eleven\s*sports?)\s*2.*(portugal|pt).*?\)", re.I),
     ],
     "DAZN ELEVEN 3 PORTUGAL": [
         re.compile(r"\bdazn\s*eleven\s*3\b.*\b(portugal|pt)\b", re.I),
-        re.compile(r"\(.*dazn\s*eleven\s*3.*(portugal|pt).*?\)", re.I),
+        re.compile(r"\beleven\s*sports?\s*3\b.*\b(portugal|pt)\b", re.I),
+        re.compile(r"\(.*(dazn\s*eleven|eleven\s*sports?)\s*3.*(portugal|pt).*?\)", re.I),
     ],
 }
 
-# مطابقة صارمة للديستنيشن: سطر EXTINF فقط (نقارن الاسم بعد الفاصلة)
-DEST_NAME_ALIASES: Dict[str, List[str]] = {
-    # نقبل وجود/غياب "PORTUGAL" أو "PT" في الديستنيشن، بس نحافظ على النص كما هو
-    "DAZN ELEVEN 1 PORTUGAL": ["dazn eleven 1", "dazn eleven 1 portugal", "dazn eleven 1 pt"],
-    "DAZN ELEVEN 2 PORTUGAL": ["dazn eleven 2", "dazn eleven 2 portugal", "dazn eleven 2 pt"],
-    "DAZN ELEVEN 3 PORTUGAL": ["dazn eleven 3", "dazn eleven 3 portugal", "dazn eleven 3 pt"],
+# ===== مطابقة الوجهة (على "اسم القناة بعد الفاصلة" فقط) =====
+# نقبل صيغ عديدة: DAZN ELEVEN 1 / ELEVEN SPORTS 1 / ELEVEN 1 (+ PT/PORTUGAL اختياري)
+DEST_NAME_VARIANTS: Dict[str, List[str]] = {
+    "DAZN ELEVEN 1 PORTUGAL": [
+        r"\bdazn\s*eleven\s*1\b",
+        r"\beleven\s*sports?\s*1\b",
+        r"\beleven\s*1\b",
+    ],
+    "DAZN ELEVEN 2 PORTUGAL": [
+        r"\bdazn\s*eleven\s*2\b",
+        r"\beleven\s*sports?\s*2\b",
+        r"\beleven\s*2\b",
+    ],
+    "DAZN ELEVEN 3 PORTUGAL": [
+        r"\bdazn\s*eleven\s*3\b",
+        r"\beleven\s*sports?\s*3\b",
+        r"\beleven\s*3\b",
+    ],
 }
+
+PT_HINT = re.compile(r"\b(pt|portugal)\b", re.I)
 
 # ===== وظائف مساعدة =====
 
@@ -80,7 +92,6 @@ def fetch_text(url: str) -> str:
     return r.text
 
 def parse_m3u_pairs(m3u_text: str) -> List[Tuple[str, Optional[str]]]:
-    """[(extinf_line, url_or_None), ...]"""
     lines = [ln.rstrip("\n") for ln in m3u_text.splitlines()]
     out: List[Tuple[str, Optional[str]]] = []
     i = 0
@@ -98,35 +109,41 @@ def parse_m3u_pairs(m3u_text: str) -> List[Tuple[str, Optional[str]]]:
         i += 1
     return out
 
-def extract_channel_name_from_extinf(extinf_line: str) -> str:
-    """اسم القناة بعد أول فاصلة في سطر EXTINF"""
+def extract_display_name(extinf_line: str) -> str:
     try:
         return extinf_line.split(",", 1)[1].strip()
     except Exception:
         return extinf_line
 
-def norm_name(name: str) -> str:
-    """تبسيط للمقارنة: حروف صغيرة + إزالة جودة/رموز/فراغات زايدة"""
-    n = name.lower()
-    n = re.sub(r"[\[\]\(\)]+", " ", n)
-    n = re.sub(r"\b(uhd|4k|fhd|hd|sd)\b", " ", n)
-    n = re.sub(r"[^\w\s]+", " ", n)
-    n = re.sub(r"\s+", " ", n).strip()
-    return n
-
-def dest_name_matches(extinf_line: str, target: str) -> bool:
-    """مطابقة الديستنيشن على اسم القناة فقط (بعد الفاصلة) ضد aliases"""
-    ch = norm_name(extract_channel_name_from_extinf(extinf_line))
-    allowed = [norm_name(a) for a in DEST_NAME_ALIASES.get(target, [])]
-    return ch in allowed or any(ch.startswith(a + " ") for a in allowed)
+def norm(s: str) -> str:
+    s = s.lower()
+    s = re.sub(r"[\[\]\(\),]+", " ", s)
+    s = re.sub(r"\b(uhd|4k|fhd|hd|sd)\b", " ", s)
+    s = re.sub(r"[^\w\s]+", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
 
 def source_match(extinf_line: str, target: str) -> bool:
-    """مطابقة مرنة للسورس على كامل سطر EXTINF"""
     pats = SOURCE_PATTERNS.get(target, [])
     return any(p.search(extinf_line) for p in pats)
 
+def dest_match(extinf_line: str, target: str) -> bool:
+    """مطابقة الاسم بعد الفاصلة ضد مجموعة أنماط واسعة + تلميح PT/PORTUGAL لو موجود"""
+    name = extract_display_name(extinf_line)
+    n = norm(name)
+    pats = [re.compile(p, re.I) for p in DEST_NAME_VARIANTS.get(target, [])]
+    # لازم يطابق أحد الأنماط الأساسية (رقم القناة)، ويفضّل وجود PT/PORTUGAL إن ذُكر
+    base_ok = any(p.search(n) for p in pats)
+    if not base_ok:
+        return False
+    # إذا الاسم يذكر بلد، نتحقق يكون PT/PORTUGAL (حتى ما نلمس قنوات Eleven من دول أخرى)
+    # إذا ما مذكور بلد، نعتبره صالح (نفس منطقك: لا نغيّر النص، بس نبدّل URL).
+    if re.search(r"\b(italy|spain|deutsch|germany|austria|poland|belgium|france|usa|uk)\b", n):
+        return bool(PT_HINT.search(n))
+    return True
+
 def pick_wanted(source_pairs: List[Tuple[str, Optional[str]]]) -> Dict[str, str]:
-    """اختيار أفضل URL لكل قناة (تفضيل FHD/HD و EN إن وجدت)"""
+    """اختيار أفضل URL لكل قناة (نفضّل UHD/4K/FHD/HD + EN إن وجدت)"""
     candidates: Dict[str, List[Tuple[str, str]]] = {n: [] for n in WANTED_CHANNELS}
 
     for extinf, url in source_pairs:
@@ -156,13 +173,12 @@ def pick_wanted(source_pairs: List[Tuple[str, Optional[str]]]) -> Dict[str, str]
         print(f"  {'✓' if n in picked else 'x'} {n}")
     return picked
 
-def render_updated_replace_urls_only(dest_text: str, picked_urls: Dict[str, str]) -> str:
+def render_updated_replace_urls_only(dest_text: str, picked_urls: Dict[str, str]) -> Tuple[str, int]:
     """
     يمرّ على الديستنيشن:
-      - إذا صادف #EXTINF لقناة مطلوبة ولدينا URL لها:
-        * يبقي سطر الـEXTINF كما هو حرفيًا
-        * يستبدل السطر التالي بالرابط الجديد (أو يدرجه إذا مفقود)
-      - لا يضيف قنوات غير موجودة أصلًا.
+      - إذا صادف #EXTINF لقناة مطلوبة ولدينا URL جديد لها: يبقي سطر الـEXTINF كما هو، ويبدّل السطر التالي بالرابط (أو يدرجه).
+      - لا يضيف قنوات جديدة.
+    يرجّع (النص النهائي، عدد التحديثات).
     """
     lines = [ln.rstrip("\n") for ln in dest_text.splitlines()]
     if not lines or not lines[0].strip().upper().startswith("#EXTM3U"):
@@ -170,24 +186,33 @@ def render_updated_replace_urls_only(dest_text: str, picked_urls: Dict[str, str]
 
     out: List[str] = []
     i = 0
+    updates = 0
+
     while i < len(lines):
         ln = lines[i]
         if ln.strip().startswith("#EXTINF"):
             matched = None
             for name in WANTED_CHANNELS:
-                if dest_name_matches(ln, name):
+                if dest_match(ln, name):
                     matched = name
                     break
-
             if matched and matched in picked_urls:
-                out.append(ln)  # لا نغيّر نص الـEXTINF
+                out.append(ln)  # لا تغيّر نص EXTINF
                 new_url = picked_urls[matched]
                 # إذا اللي بعده URL: بدّله، وإلا أدرجه
                 if i + 1 < len(lines) and lines[i + 1].strip() and not lines[i + 1].strip().startswith("#"):
+                    old_url = lines[i + 1]
+                    if old_url != new_url:
+                        updates += 1
+                        print(f"[i] Updated URL for: {matched}")
+                    else:
+                        print(f"[i] URL already up-to-date: {matched}")
                     out.append(new_url)
                     i += 2
                     continue
                 else:
+                    updates += 1
+                    print(f"[i] Inserted URL for: {matched}")
                     out.append(new_url)
                     i += 1
                     continue
@@ -195,7 +220,7 @@ def render_updated_replace_urls_only(dest_text: str, picked_urls: Dict[str, str]
         out.append(ln)
         i += 1
 
-    return "\n".join(out).rstrip() + "\n"
+    return ("\n".join(out).rstrip() + "\n", updates)
 
 def upsert_github_file(repo: str, branch: str, path_in_repo: str, content_bytes: bytes, message: str, token: str):
     base = "https://api.github.com"
@@ -230,7 +255,7 @@ def main():
     picked_urls = pick_wanted(pairs)
 
     # 3) حدّث الديستنيشن (استبدال سطر الرابط فقط)
-    updated = render_updated_replace_urls_only(dest_text, picked_urls)
+    updated, updates = render_updated_replace_urls_only(dest_text, picked_urls)
 
     # 4) اكتب إلى GitHub أو محليًا
     token = GITHUB_TOKEN
