@@ -2,9 +2,13 @@
 # -*- coding: utf-8 -*-
 """
 يسحب روابط القنوات (TNT 1, TNT 2, Sky Sports Main Event UK, Sky Sports Premier League UK)
-من RAW مصدر (ALL.m3u) ويحدّث premierleague.m3u باستبدال **سطر الرابط فقط** الذي يلي #EXTINF
-لنفس القناة، مع الإبقاء على مكانها ونص الـEXTINF كما هو تمامًا.
-لا يضيف قنوات جديدة إن لم توجد في الملف الهدف.
+من مصدر M3U ويحدث premierleague.m3u باستبدال **سطر الرابط فقط** الذي يلي #EXTINF
+لنفس القناة، بدون أي تغيير على نص الـEXTINF. لا يضيف قنوات جديدة.
+
+إصلاحات مهمة:
+- مطابقة مرنة للسورس (حتى لو الاسم داخل عنوان طويل/أقواس).
+- مطابقة صارمة للديستنيشن عبر regex للقناة على سطر الـEXTINF فقط.
+- لوج تفصيلي لمعرفة شنو انمسك وتبدّل.
 """
 
 import os
@@ -27,7 +31,7 @@ DEST_RAW_URL = os.getenv(
     "https://raw.githubusercontent.com/a7shk1/m3u-broadcast/refs/heads/main/premierleague.m3u"
 )
 
-GITHUB_TOKEN   = os.getenv("GITHUB_TOKEN", "").strip()  # repo contents scope
+GITHUB_TOKEN   = os.getenv("GITHUB_TOKEN", "").strip()
 GITHUB_REPO    = os.getenv("GITHUB_REPO", "a7shk1/m3u-broadcast")
 GITHUB_BRANCH  = os.getenv("GITHUB_BRANCH", "main")
 DEST_REPO_PATH = os.getenv("DEST_REPO_PATH", "premierleague.m3u")
@@ -38,7 +42,7 @@ OUTPUT_LOCAL_PATH = os.getenv("OUTPUT_LOCAL_PATH", "./out/premierleague.m3u")
 TIMEOUT = 25
 VERIFY_SSL = True
 
-# ===== فقط القنوات المطلوبة =====
+# ===== القنوات =====
 WANTED_CHANNELS = [
     "TNT 1",
     "TNT 2",
@@ -46,30 +50,33 @@ WANTED_CHANNELS = [
     "Sky Sports Premier League UK",
 ]
 
-# أنماط مرِنة للسورس (نبحث على كامل سطر الـEXTINF في المصدر)
-ALIASES: Dict[str, List[re.Pattern]] = {
+# مطابقة السورس: نبحث على **سطر EXTINF كله** (حتى لو الاسم داخل العنوان/الأقواس)
+SOURCE_PATTERNS: Dict[str, List[re.Pattern]] = {
     "TNT 1": [re.compile(r"\btnt\s*(sports)?\s*1\b", re.I)],
     "TNT 2": [re.compile(r"\btnt\s*(sports)?\s*2\b", re.I)],
     "Sky Sports Main Event UK": [
         re.compile(r"\bsky\s*sports\s*main\s*event\b", re.I),
-        re.compile(r"\bsky\s*sports\s*main\s*event\s*uk\b", re.I),
+        re.compile(r"\(.*sky\s*sports\s*main\s*event\s*(uk)?\).*", re.I),
     ],
     "Sky Sports Premier League UK": [
         re.compile(r"\bsky\s*sports\s*premier\s*league\b", re.I),
-        re.compile(r"\bsky\s*sports\s*premier\s*league\s*uk\b", re.I),
+        re.compile(r"\(.*sky\s*sports\s*premier\s*league\s*(uk)?\).*", re.I),
     ],
 }
 
-# أسماء/مرادفات صريحة للديستينيشن (مطابقة على "اسم القناة بعد الفاصلة")
-NAME_ALIASES: Dict[str, List[str]] = {
-    "TNT 1": ["tnt 1", "tnt sports 1"],
-    "TNT 2": ["tnt 2", "tnt sports 2"],
-    "Sky Sports Main Event UK": ["sky sports main event", "sky sports main event uk"],
-    # نمنع مطابقة "sky premier league" بدون "sports"
-    "Sky Sports Premier League UK": ["sky sports premier league", "sky sports premier league uk"],
+# مطابقة الديستنيشن: **سطر EXTINF فقط**. مانغيّر نصه نهائيًا.
+DEST_EXTINF_PATTERNS: Dict[str, re.Pattern] = {
+    "TNT 1": re.compile(r"^#EXTINF[^,]*,\s*.*\btnt(\s*sports)?\s*1\b.*$", re.I),
+    "TNT 2": re.compile(r"^#EXTINF[^,]*,\s*.*\btnt(\s*sports)?\s*2\b.*$", re.I),
+    "Sky Sports Main Event UK": re.compile(
+        r"^#EXTINF[^,]*,\s*.*\bsky\s*sports\s*main\s*event\b.*$", re.I
+    ),
+    "Sky Sports Premier League UK": re.compile(
+        r"^#EXTINF[^,]*,\s*.*\bsky\s*sports\s*premier\s*league\b.*$", re.I
+    ),
 }
 
-UK_MARKERS = (" uk", "(uk", "[uk", " united kingdom")
+UK_MARKERS = (" uk", "(uk", "[uk", " united kingdom", "🇬🇧")
 
 # ===== وظائف مساعدة =====
 
@@ -79,7 +86,7 @@ def fetch_text(url: str) -> str:
     return r.text
 
 def parse_m3u_pairs(m3u_text: str) -> List[Tuple[str, Optional[str]]]:
-    """يحّول ملف m3u إلى [(#EXTINF..., url_or_None), ...]"""
+    """[(extinf_line, url_or_None), ...]"""
     lines = [ln.rstrip("\n") for ln in m3u_text.splitlines()]
     out: List[Tuple[str, Optional[str]]] = []
     i = 0
@@ -97,50 +104,13 @@ def parse_m3u_pairs(m3u_text: str) -> List[Tuple[str, Optional[str]]]:
         i += 1
     return out
 
-def extract_channel_name_from_extinf(extinf_line: str) -> str:
-    """
-    يأخذ سطر EXTINF الكامل ويستخرج اسم القناة بعد أول فاصلة ','.
-    مثال: '#EXTINF:-1, Sky Sports Premier League HD' -> 'Sky Sports Premier League HD'
-    """
-    try:
-        return extinf_line.split(",", 1)[1].strip()
-    except Exception:
-        return extinf_line
-
-def norm_name(name: str) -> str:
-    """
-    تبسيط الاسم للمقارنة: حروف صغيرة، إزالة تكرار المسافات،
-    إزالة كلمات الجودة (hd/fhd/uhd/4k)، إزالة رموز زائدة.
-    """
-    n = name.lower()
-    n = re.sub(r"[\[\]\(\)]+", " ", n)                         # أقواس
-    n = re.sub(r"\b(uhd|4k|fhd|hd|sd)\b", " ", n)              # جودة
-    n = re.sub(r"[^\w\s]+", " ", n)                            # رموز
-    n = re.sub(r"\s+", " ", n).strip()                         # مسافة واحدة
-    return n
-
-def name_matches_target(extinf_line: str, target: str) -> bool:
-    """
-    مطابقة صارمة على الديستينيشن: نقارن "اسم القناة بعد الفاصلة" مع aliases المسموحة.
-    تمنع مطابقة 'Sky Premier League' بدون 'Sports'.
-    """
-    ch_name = extract_channel_name_from_extinf(extinf_line)
-    n = norm_name(ch_name)
-    allowed = [norm_name(a) for a in NAME_ALIASES.get(target, [])]
-    return n in allowed or any(n.startswith(a + " ") for a in allowed)
-
-def source_matches_target_extinf(extinf_line: str, target: str) -> bool:
-    """
-    مطابقة مرِنة للسورس: نبحث بـregex على سطر الـEXTINF كامل
-    حتى لو كان اسم القناة داخل العنوان/الأقواس (مثل (SKY SPORTS PREMIER LEAGUE UK)).
-    """
-    pats = ALIASES.get(target, [])
+def source_match(extinf_line: str, target: str) -> bool:
+    pats = SOURCE_PATTERNS.get(target, [])
     return any(p.search(extinf_line) for p in pats)
 
 def pick_wanted(source_pairs: List[Tuple[str, Optional[str]]]) -> Dict[str, str]:
     """
-    يرجّع dict: wanted_name -> stream_url
-    يلتقط **أفضل مرشّح** لكل قناة مطلوبة من المصدر، مع تفضيل 'UK/🇬🇧' إن وُجد.
+    التقط أفضل URL من السورس لكل قناة مطلوبة (تفضيل UK/🇬🇧 و HD/FHD/UHD و EN).
     """
     candidates: Dict[str, List[Tuple[str, str]]] = {name: [] for name in WANTED_CHANNELS}
 
@@ -151,34 +121,81 @@ def pick_wanted(source_pairs: List[Tuple[str, Optional[str]]]) -> Dict[str, str]
     for extinf, url in source_pairs:
         if not url:
             continue
-        for official_name in WANTED_CHANNELS:
-            # مطابقة مرنة على السورس (كامل سطر EXTINF)
-            if source_matches_target_extinf(extinf, official_name):
-                candidates[official_name].append((extinf, url))
+        for name in WANTED_CHANNELS:
+            if source_match(extinf, name):
+                candidates[name].append((extinf, url))
 
     picked: Dict[str, str] = {}
-
     for name, lst in candidates.items():
         if not lst:
             continue
 
-        # نظام نقاط بسيط:
-        # +5 إذا يحتوي UK/🇬🇧
-        # +2 إذا يحتوي "UHD/4K/FHD/HD"
-        # +1 إذا يحتوي "EN"/"English"
         def score(item: Tuple[str, str]) -> int:
-            ext = item[0]
+            ext = item[0].lower()
             sc = 0
             if has_uk_tag(ext): sc += 5
-            ext_low = ext.lower()
-            if any(q in ext_low for q in (" uhd", " 4k", " fhd", " hd")): sc += 2
-            if re.search(r"\b(en|english)\b", ext_low): sc += 1
+            if any(q in ext for q in (" uhd", " 4k", " fhd", " hd")): sc += 2
+            if re.search(r"\b(en|english)\b", ext): sc += 1
             return sc
 
         best = sorted(lst, key=score, reverse=True)[0]
         picked[name] = best[1]
 
+    # لوج
+    print("[i] Source candidates picked:")
+    for n in WANTED_CHANNELS:
+        print(f"  {'✓' if n in picked else 'x'} {n}")
     return picked
+
+def update_dest_urls_only(dest_text: str, picked_urls: Dict[str, str]) -> Tuple[str, int]:
+    """
+    يمر على الديستنيشن ويبدّل **سطر الرابط فقط** بعد كل EXTINF مطابق.
+    يرجّع (النص النهائي، عدد التحديثات).
+    """
+    lines = [ln.rstrip("\n") for ln in dest_text.splitlines()]
+    if not lines or not lines[0].strip().upper().startswith("#EXTM3U"):
+        lines = ["#EXTM3U"] + lines
+
+    out: List[str] = []
+    i = 0
+    updates = 0
+
+    while i < len(lines):
+        ln = lines[i]
+        if ln.strip().startswith("#EXTINF"):
+            matched_name = None
+            for name, pat in DEST_EXTINF_PATTERNS.items():
+                if pat.search(ln):
+                    matched_name = name
+                    break
+
+            if matched_name and matched_name in picked_urls:
+                # إبقي الـEXTINF كما هو
+                out.append(ln)
+                new_url = picked_urls[matched_name]
+
+                # إذا السطر البعده URL (مو تعليق): بدّله، وإلا أدرجه
+                if i + 1 < len(lines) and lines[i + 1].strip() and not lines[i + 1].strip().startswith("#"):
+                    old_url = lines[i + 1]
+                    if old_url != new_url:
+                        updates += 1
+                        print(f"[i] Updated URL for: {matched_name}")
+                    else:
+                        print(f"[i] URL already up-to-date: {matched_name}")
+                    out.append(new_url)
+                    i += 2
+                    continue
+                else:
+                    updates += 1
+                    print(f"[i] Inserted URL for: {matched_name}")
+                    out.append(new_url)
+                    i += 1
+                    continue
+
+        out.append(ln)
+        i += 1
+
+    return ("\n".join(out).rstrip() + "\n", updates)
 
 def upsert_github_file(repo: str, branch: str, path_in_repo: str, content_bytes: bytes, message: str, token: str):
     base = "https://api.github.com"
@@ -203,76 +220,30 @@ def upsert_github_file(repo: str, branch: str, path_in_repo: str, content_bytes:
         raise RuntimeError(f"GitHub PUT failed: {put_res.status_code} {put_res.text}")
     return put_res.json()
 
-def render_updated_replace_urls_only(dest_text: str, picked_urls: Dict[str, str]) -> str:
-    """
-    يمشي على ملف الوجهة سطر-بسطر:
-      - إذا صادف #EXTINF لقناة مطلوبة ولدينا URL جديد لها:
-        * يبقي سطر الـEXTINF كما هو (بدون أي تعديل على الاسم/النص)
-        * يستبدل السطر التالي (إذا كان URL) بالرابط الجديد أو يدرجه إذا مفقود.
-      - لا يضيف قنوات جديدة إن لم تكن موجودة أساسًا.
-    """
-    lines = [ln.rstrip("\n") for ln in dest_text.splitlines()]
-    if not lines or not lines[0].strip().upper().startswith("#EXTM3U"):
-        lines = ["#EXTM3U"] + lines
-
-    out: List[str] = []
-    i = 0
-    while i < len(lines):
-        ln = lines[i]
-        if ln.strip().startswith("#EXTINF"):
-            matched_name = None
-            for official_name in WANTED_CHANNELS:
-                if name_matches_target(ln, official_name):
-                    matched_name = official_name
-                    break
-
-            if matched_name and matched_name in picked_urls:
-                # أبقِ الـEXTINF كما هو حرفيًا
-                out.append(ln)
-                new_url = picked_urls[matched_name]
-
-                # إذا السطر اللي بعده URL: استبدله، وإلا أدرجه
-                if i + 1 < len(lines) and lines[i + 1].strip() and not lines[i + 1].strip().startswith("#"):
-                    out.append(new_url)
-                    i += 2
-                    continue
-                else:
-                    out.append(new_url)
-                    i += 1
-                    continue
-
-        # الحالة العادية: انسخ السطر كما هو
-        out.append(ln)
-        i += 1
-
-    return "\n".join(out).rstrip() + "\n"
-
 def main():
     # 1) حمّل المصدر والوجهة
     src_text = fetch_text(SOURCE_URL)
     dest_text = fetch_text(DEST_RAW_URL)
 
-    # 2) التقط أفضل روابط القنوات المطلوبة من المصدر
+    # 2) اختَر أفضل روابط من السورس
     pairs = parse_m3u_pairs(src_text)
     picked_urls = pick_wanted(pairs)
 
-    print("[i] Picked URLs:")
-    for n in WANTED_CHANNELS:
-        tag = "✓" if n in picked_urls else "x"
-        print(f"  {tag} {n}")
-
-    # 3) حدّث الملف الهدف باستبدال الروابط فقط
-    updated = render_updated_replace_urls_only(dest_text, picked_urls)
+    # 3) حدّث الديستنيشن (سطر URL فقط)
+    updated_text, updates = update_dest_urls_only(dest_text, picked_urls)
 
     # 4) اكتب إلى GitHub أو محليًا
+    if updates == 0:
+        print("[i] No changes to write.")
+        # حتى لو ماكو تغيير، نكتب محليًا إذا ماكو توكن (للتحقق)
     token = GITHUB_TOKEN
     if token:
-        print(f"[i] Updating GitHub: {GITHUB_REPO}@{GITHUB_BRANCH}:{DEST_REPO_PATH}")
+        print(f"[i] Writing to GitHub: {GITHUB_REPO}@{GITHUB_BRANCH}:{DEST_REPO_PATH}")
         res = upsert_github_file(
             repo=GITHUB_REPO,
             branch=GITHUB_BRANCH,
             path_in_repo=DEST_REPO_PATH,
-            content_bytes=updated.encode("utf-8"),
+            content_bytes=updated_text.encode("utf-8"),
             message=COMMIT_MESSAGE,
             token=token,
         )
@@ -280,7 +251,7 @@ def main():
     else:
         p = Path(OUTPUT_LOCAL_PATH)
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(updated, encoding="utf-8")
+        p.write_text(updated_text, encoding="utf-8")
         print("[i] Wrote locally to:", p.resolve())
 
 if __name__ == "__main__":
