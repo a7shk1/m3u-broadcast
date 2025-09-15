@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 يسحب روابط القنوات (TNT 1, TNT 2, Sky Sports Main Event UK, Sky Sports Premier League UK)
-من RAW مصدر (ALL.m3u) ويقوم بتحديث ملف وجهة (premierleague.m3u) باستبدال **سطر الرابط فقط**
-الذي يلي #EXTINF لنفس القناة، مع الحفاظ على مكانها ونص الـEXTINF كما هو.
+من RAW مصدر (ALL.m3u) ويحدّث ملف وجهة (premierleague.m3u) باستبدال **سطر الرابط فقط**
+الذي يلي #EXTINF لنفس القناة، مع الإبقاء على مكانها ونص الـEXTINF كما هو.
 لا يضيف قنوات جديدة إن لم توجد في الملف الهدف.
 """
 
@@ -15,8 +15,7 @@ from pathlib import Path
 from typing import List, Tuple, Dict, Optional
 import requests
 
-# ===== إعدادات =====
-# (لم يتم تغيير أي معلمات/بيئات هنا)
+# ===== إعدادات (بدون تغيير معلماتك) =====
 
 SOURCE_URL = os.getenv(
     "SOURCE_URL",
@@ -32,14 +31,14 @@ GITHUB_TOKEN   = os.getenv("GITHUB_TOKEN", "").strip()  # repo contents scope
 GITHUB_REPO    = os.getenv("GITHUB_REPO", "a7shk1/m3u-broadcast")
 GITHUB_BRANCH  = os.getenv("GITHUB_BRANCH", "main")
 DEST_REPO_PATH = os.getenv("DEST_REPO_PATH", "premierleague.m3u")
-COMMIT_MESSAGE = os.getenv("COMMIT_MESSAGE", "chore: update premierleague URLs (Match!/TNT/Sky)")
+COMMIT_MESSAGE = os.getenv("COMMIT_MESSAGE", "🔄 auto-update premierleague.m3u (every 5min)")
 
 OUTPUT_LOCAL_PATH = os.getenv("OUTPUT_LOCAL_PATH", "./out/premierleague.m3u")
 
 TIMEOUT = 25
 VERIFY_SSL = True
 
-# ===== القنوات المطلوبة فقط =====
+# ===== فقط القنوات المطلوبة (تأكيد) =====
 WANTED_CHANNELS = [
     "TNT 1",
     "TNT 2",
@@ -47,26 +46,19 @@ WANTED_CHANNELS = [
     "Sky Sports Premier League UK",
 ]
 
-# Aliases/أنماط مطابقة مرنة لسطر EXTINF (لهذه القنوات فقط)
+# أنماط مطابقة مرنة لسطر EXTINF
 ALIASES: Dict[str, List[re.Pattern]] = {
-    # TNT Sports 1/2 قد تُكتب بصيغ متعددة
     "TNT 1": [
         re.compile(r"\btnt\s*(sports)?\s*1\b", re.I),
-        re.compile(r"\btnt\s*1\b", re.I),
     ],
     "TNT 2": [
         re.compile(r"\btnt\s*(sports)?\s*2\b", re.I),
-        re.compile(r"\btnt\s*2\b", re.I),
     ],
-    # Sky Sports Main Event
     "Sky Sports Main Event UK": [
         re.compile(r"\bsky\s*sports\s*main\s*event\b", re.I),
-        re.compile(r"\bsky\s*sports\s*main-event\b", re.I),
     ],
-    # Sky Sports Premier League
     "Sky Sports Premier League UK": [
         re.compile(r"\bsky\s*sports\s*premier\s*league\b", re.I),
-        re.compile(r"\bss\s*premier\s*league\b", re.I),
     ],
 }
 
@@ -90,7 +82,7 @@ def parse_m3u_pairs(m3u_text: str) -> List[Tuple[str, Optional[str]]]:
                 nxt = lines[i + 1].strip()
                 if nxt and not nxt.startswith("#"):
                     url = nxt
-            out.append((ln, url))
+            out.append((lines[i], url))
             i += 2
             continue
         i += 1
@@ -102,18 +94,47 @@ def find_first_match(extinf: str, patterns: List[re.Pattern]) -> bool:
 def pick_wanted(source_pairs: List[Tuple[str, Optional[str]]]) -> Dict[str, str]:
     """
     يرجّع dict: wanted_name -> stream_url
-    يلتقط أول تطابق لكل قناة مطلوبة من المصدر. يحتفظ بالرابط فقط.
+    يلتقط **أفضل مرشّح** لكل قناة مطلوبة، مع تفضيل 'UK' / '🇬🇧' إن وُجد.
     """
-    picked: Dict[str, str] = {}
+    candidates: Dict[str, List[Tuple[str, str]]] = {name: [] for name in WANTED_CHANNELS}
+
+    def has_uk_tag(s: str) -> bool:
+        s_low = s.lower()
+        return (
+            " uk" in s_low or "(uk" in s_low or "[uk" in s_low
+            or "🇬🇧" in s or "united kingdom" in s_low
+        )
+
     for extinf, url in source_pairs:
         if not url:
             continue
         for official_name in WANTED_CHANNELS:
-            if official_name in picked:
-                continue
             pats = ALIASES.get(official_name, [])
-            if find_first_match(extinf, pats):
-                picked[official_name] = url
+            if pats and find_first_match(extinf, pats):
+                candidates[official_name].append((extinf, url))
+
+    picked: Dict[str, str] = {}
+
+    for name, lst in candidates.items():
+        if not lst:
+            continue
+
+        # نظام نقاط بسيط:
+        # +5 إذا يحتوي UK/🇬🇧
+        # +2 إذا يحتوي "FHD" أو "HD"
+        # +1 إذا يحتوي "EN"/"English"
+        def score(item: Tuple[str, str]) -> int:
+            ext = item[0]
+            sc = 0
+            if has_uk_tag(ext): sc += 5
+            ext_low = ext.lower()
+            if " fhd" in ext_low or " hd" in ext_low: sc += 2
+            if re.search(r"\b(en|english)\b", ext_low): sc += 1
+            return sc
+
+        best = sorted(lst, key=score, reverse=True)[0]
+        picked[name] = best[1]
+
     return picked
 
 def upsert_github_file(repo: str, branch: str, path_in_repo: str, content_bytes: bytes, message: str, token: str):
@@ -141,10 +162,9 @@ def upsert_github_file(repo: str, branch: str, path_in_repo: str, content_bytes:
 
 def render_updated_replace_urls_only(dest_text: str, picked_urls: Dict[str, str]) -> str:
     """
-    يمرّ على ملف الوجهة سطرًا-بسطر:
-      - إذا صادف #EXTINF يطابق إحدى القنوات المطلوبة وكان لدينا URL جديد لها،
-        يبقي سطر الـEXTINF كما هو ويستبدل **السطر التالي** (إذا كان URL) بالرابط الجديد.
-      - إذا لم يكن هناك سطر URL بعد الـEXTINF (حالة نادرة) سيقوم بإدراجه.
+    يمرّ على ملف الوجهة:
+      - إذا صادف #EXTINF يطابق إحدى القنوات المطلوبة ولدينا URL جديد لها،
+        يبقي الـEXTINF كما هو ويستبدل **السطر التالي** بالرابط الجديد (أو يدرجه إذا مفقود).
       - لا يضيف قنوات غير موجودة أصلًا.
     """
     lines = [ln.rstrip("\n") for ln in dest_text.splitlines()]
@@ -186,7 +206,7 @@ def main():
     src_text = fetch_text(SOURCE_URL)
     dest_text = fetch_text(DEST_RAW_URL)
 
-    # 2) التقط روابط القنوات المطلوبة من المصدر
+    # 2) التقط أفضل روابط القنوات المطلوبة من المصدر
     pairs = parse_m3u_pairs(src_text)
     picked_urls = pick_wanted(pairs)
 
