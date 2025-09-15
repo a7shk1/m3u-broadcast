@@ -27,7 +27,7 @@ DEST_RAW_URL = os.getenv(
     "https://raw.githubusercontent.com/a7shk1/m3u-broadcast/refs/heads/main/premierleague.m3u"
 )
 
-GITHUB_TOKEN   = os.getenv("GITHUB_TOKEN", "").strip()
+GITHUB_TOKEN   = os.getenv("GITHUB_TOKEN", "").strip()  # repo contents scope
 GITHUB_REPO    = os.getenv("GITHUB_REPO", "a7shk1/m3u-broadcast")
 GITHUB_BRANCH  = os.getenv("GITHUB_BRANCH", "main")
 DEST_REPO_PATH = os.getenv("DEST_REPO_PATH", "premierleague.m3u")
@@ -46,24 +46,30 @@ WANTED_CHANNELS = [
     "Sky Sports Premier League UK",
 ]
 
-# قوائم أسماء/مرادفات صريحة (بدون ريجكس) تُطبَّق على اسم القناة بعد الفاصلة
-NAME_ALIASES: Dict[str, List[str]] = {
-    "TNT 1": [
-        "tnt 1", "tnt sports 1"
-    ],
-    "TNT 2": [
-        "tnt 2", "tnt sports 2"
-    ],
+# أنماط مرِنة للسورس (نبحث على كامل سطر الـEXTINF في المصدر)
+ALIASES: Dict[str, List[re.Pattern]] = {
+    "TNT 1": [re.compile(r"\btnt\s*(sports)?\s*1\b", re.I)],
+    "TNT 2": [re.compile(r"\btnt\s*(sports)?\s*2\b", re.I)],
     "Sky Sports Main Event UK": [
-        "sky sports main event", "sky sports main event uk"
+        re.compile(r"\bsky\s*sports\s*main\s*event\b", re.I),
+        re.compile(r"\bsky\s*sports\s*main\s*event\s*uk\b", re.I),
     ],
     "Sky Sports Premier League UK": [
-        # نمنع مطابقة "sky premier league" بدون "sports"
-        "sky sports premier league", "sky sports premier league uk"
+        re.compile(r"\bsky\s*sports\s*premier\s*league\b", re.I),
+        re.compile(r"\bsky\s*sports\s*premier\s*league\s*uk\b", re.I),
     ],
 }
 
-UK_MARKERS = (" uk", "(uk", "[uk", "🇬🇧", " united kingdom")
+# أسماء/مرادفات صريحة للديستينيشن (مطابقة على "اسم القناة بعد الفاصلة")
+NAME_ALIASES: Dict[str, List[str]] = {
+    "TNT 1": ["tnt 1", "tnt sports 1"],
+    "TNT 2": ["tnt 2", "tnt sports 2"],
+    "Sky Sports Main Event UK": ["sky sports main event", "sky sports main event uk"],
+    # نمنع مطابقة "sky premier league" بدون "sports"
+    "Sky Sports Premier League UK": ["sky sports premier league", "sky sports premier league uk"],
+}
+
+UK_MARKERS = (" uk", "(uk", "[uk", " united kingdom")
 
 # ===== وظائف مساعدة =====
 
@@ -107,25 +113,29 @@ def norm_name(name: str) -> str:
     إزالة كلمات الجودة (hd/fhd/uhd/4k)، إزالة رموز زائدة.
     """
     n = name.lower()
-    # شيل أقواس/رموز شائعة
-    n = re.sub(r"[\[\]\(\)]+", " ", n)
-    # شيل كلمات الجودة
-    n = re.sub(r"\b(uhd|4k|fhd|hd|sd)\b", " ", n)
-    # شيل فواصل/نقاط إضافية
-    n = re.sub(r"[^\w\s]+", " ", n)
-    # مسافة واحدة
-    n = re.sub(r"\s+", " ", n).strip()
+    n = re.sub(r"[\[\]\(\)]+", " ", n)                         # أقواس
+    n = re.sub(r"\b(uhd|4k|fhd|hd|sd)\b", " ", n)              # جودة
+    n = re.sub(r"[^\w\s]+", " ", n)                            # رموز
+    n = re.sub(r"\s+", " ", n).strip()                         # مسافة واحدة
     return n
 
 def name_matches_target(extinf_line: str, target: str) -> bool:
     """
-    مطابقة صارمة على اسم القناة بعد الفاصلة مع aliases الخاصة بالهدف.
-    تمنع ماتش لـ 'Sky Premier League' بدون 'Sports'.
+    مطابقة صارمة على الديستينيشن: نقارن "اسم القناة بعد الفاصلة" مع aliases المسموحة.
+    تمنع مطابقة 'Sky Premier League' بدون 'Sports'.
     """
     ch_name = extract_channel_name_from_extinf(extinf_line)
     n = norm_name(ch_name)
     allowed = [norm_name(a) for a in NAME_ALIASES.get(target, [])]
     return n in allowed or any(n.startswith(a + " ") for a in allowed)
+
+def source_matches_target_extinf(extinf_line: str, target: str) -> bool:
+    """
+    مطابقة مرِنة للسورس: نبحث بـregex على سطر الـEXTINF كامل
+    حتى لو كان اسم القناة داخل العنوان/الأقواس (مثل (SKY SPORTS PREMIER LEAGUE UK)).
+    """
+    pats = ALIASES.get(target, [])
+    return any(p.search(extinf_line) for p in pats)
 
 def pick_wanted(source_pairs: List[Tuple[str, Optional[str]]]) -> Dict[str, str]:
     """
@@ -141,14 +151,9 @@ def pick_wanted(source_pairs: List[Tuple[str, Optional[str]]]) -> Dict[str, str]
     for extinf, url in source_pairs:
         if not url:
             continue
-        # نفحص اسم القناة في المصدر بعد الفاصلة
-        src_name = extract_channel_name_from_extinf(extinf)
         for official_name in WANTED_CHANNELS:
-            # نرفض أي مطابقة ما تحتوي "sports" لقناة سكاي PL
-            if "Premier League" in official_name and "sports" not in norm_name(src_name):
-                continue
-            # نستخدم aliases للمطابقة الدقيقة
-            if name_matches_target(extinf, official_name):
+            # مطابقة مرنة على السورس (كامل سطر EXTINF)
+            if source_matches_target_extinf(extinf, official_name):
                 candidates[official_name].append((extinf, url))
 
     picked: Dict[str, str] = {}
@@ -157,12 +162,16 @@ def pick_wanted(source_pairs: List[Tuple[str, Optional[str]]]) -> Dict[str, str]
         if not lst:
             continue
 
+        # نظام نقاط بسيط:
+        # +5 إذا يحتوي UK/🇬🇧
+        # +2 إذا يحتوي "UHD/4K/FHD/HD"
+        # +1 إذا يحتوي "EN"/"English"
         def score(item: Tuple[str, str]) -> int:
             ext = item[0]
             sc = 0
             if has_uk_tag(ext): sc += 5
             ext_low = ext.lower()
-            if " fhd" in ext_low or " hd" in ext_low or " uhd" in ext_low or " 4k" in ext_low: sc += 2
+            if any(q in ext_low for q in (" uhd", " 4k", " fhd", " hd")): sc += 2
             if re.search(r"\b(en|english)\b", ext_low): sc += 1
             return sc
 
@@ -211,7 +220,6 @@ def render_updated_replace_urls_only(dest_text: str, picked_urls: Dict[str, str]
     while i < len(lines):
         ln = lines[i]
         if ln.strip().startswith("#EXTINF"):
-            # نحدد هل هذا الـEXTINF يخص قناة مطلوبة عبر الاسم بعد الفاصلة
             matched_name = None
             for official_name in WANTED_CHANNELS:
                 if name_matches_target(ln, official_name):
@@ -281,4 +289,3 @@ if __name__ == "__main__":
     except Exception as e:
         print("[x] Error:", e)
         sys.exit(1)
-
