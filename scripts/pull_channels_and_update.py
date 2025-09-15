@@ -54,7 +54,7 @@ WANTED_CHANNELS = [
     "TNT 1",
     "TNT 2",
     "Sky Sports Main Event UK",
-    "Sky Sports Premier League UK",
+    "SKY SPORTS PREMIER LEAGUE UK",
 ]
 
 # Aliases/أنماط مطابقة مرنة لسطر EXTINF
