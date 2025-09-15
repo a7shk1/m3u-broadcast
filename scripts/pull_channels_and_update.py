@@ -9,7 +9,7 @@
 القنوات:
   Match! Futbol 1, Match! Futbol 2, Match! Futbol 3,
   TNT 1, TNT 2,
-  Sky Sports Main Event, Sky Sports Premier League
+  Sky Sports Main Event UK, Sky Sports Premier League UK
 """
 
 import os
@@ -24,7 +24,7 @@ import requests
 
 SOURCE_URL = os.getenv(
     "SOURCE_URL",
-    "https://raw.githubusercontent.com/abusaeeidx/CricHd-playlists-Auto-Update-permanent/refs/heads/main/ALL.m3u"
+    "https://raw.githubusercontent.com/DisabledAbel/daddylivehd-m3u/f582ae100c91adf8c8db905a8f97beb42f369a0b/daddylive-events.m3u8"
 )
 
 # الهدف صار premierleague.m3u
@@ -53,8 +53,8 @@ WANTED_CHANNELS = [
     "Match! Futbol 3",
     "TNT 1",
     "TNT 2",
-    "Sky Sports Main Event",
-    "Sky Sports Premier League",
+    "Sky Sports Main Event UK",
+    "Sky Sports Premier League UK",
 ]
 
 # Aliases/أنماط مطابقة مرنة لسطر EXTINF
@@ -64,8 +64,8 @@ ALIASES: Dict[str, List[re.Pattern]] = {
     "Match! Futbol 3": [re.compile(r"match!?\.?\s*futbol\s*3", re.I)],
     "TNT 1":            [re.compile(r"\btnt\s*(sports)?\s*1\b", re.I)],
     "TNT 2":            [re.compile(r"\btnt\s*(sports)?\s*2\b", re.I)],
-    "Sky Sports Main Event":     [re.compile(r"sky\s*sports\s*main\s*event", re.I)],
-    "Sky Sports Premier League": [re.compile(r"sky\s*sports\s*premier\s*league", re.I)],
+    "Sky Sports Main Event UK":     [re.compile(r"sky\s*sports\s*main\s*event", re.I)],
+    "Sky Sports Premier League UK": [re.compile(r"sky\s*sports\s*premier\s*league", re.I)],
 }
 
 # ===== وظائف مساعدة =====
