@@ -1,7 +1,7 @@
 # scripts/update_dazn_pt.py
 # -*- coding: utf-8 -*-
 """
-يجلب روابط قنوات DAZN/ELEVEN PT (1/2/3) من المصدر
+يجلب روابط DAZN ELEVEN PT (1/2/3) من المصدر
 ويحدّث dazn.m3u باستبدال **سطر الرابط فقط** الذي يلي #EXTINF لنفس القناة،
 بدون تغيير نص الـEXTINF أو ترتيب القنوات. لا يضيف قنوات جديدة.
 """
@@ -34,7 +34,9 @@ OUTPUT_LOCAL_PATH = os.getenv("OUTPUT_LOCAL_PATH", "./out/dazn.m3u")
 TIMEOUT = 25
 VERIFY_SSL = True
 
-# ===== القنوات =====
+# ===== القنوات الهدف =====
+# نلتقط من "المصدر": DAZN ELEVEN {1..3} PORTUGAL / ELEVEN SPORTS {1..3} (PT)
+# ونحدّث في "الوجهة": DAZN {1..3} حصراً (لا نلمس DAZN 4..6).
 WANTED = {
     "DAZN ELEVEN 1 PORTUGAL": 1,
     "DAZN ELEVEN 2 PORTUGAL": 2,
@@ -42,32 +44,21 @@ WANTED = {
 }
 
 # ===== مطابقة المصدر (EXTINF كامل) =====
-# نلتقط DAZN/ELEVEN/Eleven Sports + رقم 1/2/3 + (Portugal|PT) بأي ترتيب/أقواس
 def source_patterns_for(num: int) -> list[re.Pattern]:
     n = str(num)
     return [
-        re.compile(rf"\b(dazn\s*)?eleven\s*sports?\s*{n}\b.*\b(portugal|pt)\b", re.I),
-        re.compile(rf"\b(dazn\s*)?eleven\s*{n}\b.*\b(portugal|pt)\b", re.I),
+        re.compile(rf"\bdazn\s*eleven\s*{n}\b.*\b(portugal|pt)\b", re.I),
+        re.compile(rf"\beleven\s*sports?\s*{n}\b.*\b(portugal|pt)\b", re.I),
         re.compile(rf"\(.*(dazn\s*eleven|eleven\s*sports?)\s*{n}.*(portugal|pt).*?\)", re.I),
-        re.compile(rf"^\#EXTINF[^\n]*\((?=[^\)]*(portugal|pt))(?=[^\)]*eleven\s*(sports?)?\s*{n}).*\)", re.I),
     ]
 
-# ===== مطابقة الوجهة (اسم القناة بعد الفاصلة فقط) =====
-# نقبل: DAZN ELEVEN {n} | ELEVEN SPORTS {n} | ELEVEN {n} (+ PT/PORTUGAL اختياري) + جودة اختيارية
+# ===== مطابقة الوجهة (اسم القناة بعد الفاصلة) =====
+# انت كاتبها "DAZN 1/2/3" — نخليها مطابقة حرفية لهذه الصيغة حتى نتأكد نلمس بس هذني.
 def dest_regex_for(num: int) -> re.Pattern:
-    n = str(num)
-    return re.compile(
-        rf"""^#EXTINF[^,]*,\s*.*\b(
-                dazn\s*eleven\s*{n}|
-                eleven\s*sports?\s*{n}|
-                eleven\s*{n}
-            )\b.*$""",
-        re.I | re.X
-    )
+    # أمثلة صالحة: "#EXTINF:-1,DAZN 1", "#EXTINF:-1 tvg-id=...,DAZN 1 HD"
+    return re.compile(rf"^#EXTINF[^,]*,\s*DAZN\s*{num}\b.*$", re.I)
 
-NEG_COUNTRIES = re.compile(r"\b(italy|spain|deutsch|germany|austria|poland|belgium|france|usa)\b", re.I)
-PT_HINT = re.compile(r"\b(pt|portugal)\b", re.I)
-
+# ===== مساعدات =====
 def fetch_text(url: str) -> str:
     r = requests.get(url, timeout=TIMEOUT, verify=VERIFY_SSL)
     r.raise_for_status()
@@ -75,7 +66,7 @@ def fetch_text(url: str) -> str:
 
 def parse_pairs(m3u_text: str) -> List[Tuple[str, Optional[str]]]:
     lines = [ln.rstrip("\n") for ln in m3u_text.splitlines()]
-    out = []
+    out: List[Tuple[str, Optional[str]]] = []
     i = 0
     while i < len(lines):
         ln = lines[i].strip()
@@ -97,23 +88,17 @@ def pick_from_source(pairs: List[Tuple[str, Optional[str]]]) -> Dict[str, str]:
         pats = source_patterns_for(num)
         cands: list[Tuple[str,str]] = []
         for extinf, url in pairs:
-            if not url: continue
+            if not url: 
+                continue
             if any(p.search(extinf) for p in pats):
                 cands.append((extinf, url))
 
-        if not cands:
-            # fallback: إذا ماكو PT/PORTUGAL، خذ ELEVEN {n} بشرط ما تكون بلدان ثانية
-            for extinf, url in pairs:
-                if not url: continue
-                if re.search(rf"\beleven\s*(sports?)?\s*{num}\b", extinf, re.I) and not NEG_COUNTRIES.search(extinf):
-                    cands.append((extinf, url))
-
         if cands:
-            def score(item: Tuple[str,str]) -> int:
+            # نفضّل UHD/4K/FHD/HD + EN إذا موجود
+            def score(item: Tuple[str, str]) -> int:
                 ext = item[0].lower()
                 sc = 0
-                if PT_HINT.search(ext): sc += 5
-                if any(q in ext for q in (" uhd"," 4k"," fhd"," hd")): sc += 2
+                if any(q in ext for q in (" uhd", " 4k", " fhd", " hd")): sc += 2
                 if re.search(r"\b(en|english)\b", ext): sc += 1
                 return sc
             best = sorted(cands, key=score, reverse=True)[0]
@@ -129,83 +114,94 @@ def update_dest_urls_only(dest_text: str, picked: Dict[str,str]) -> Tuple[str,in
     if not lines or not lines[0].strip().upper().startswith("#EXTM3U"):
         lines = ["#EXTM3U"] + lines
 
-    # بُنيّة مطابقة لكل قناة
-    dest_pats: Dict[str,re.Pattern] = {name: dest_regex_for(num) for name, num in WANTED.items()}
+    # بُنيّة مطابقة الوجهة فقط لـ DAZN 1/2/3
+    dest_pats: Dict[int,re.Pattern] = {num: dest_regex_for(num) for num in (1,2,3)}
+    # خريطة تحويل: أي DAZN {n} بالوجهة -> أي قناة مصدر نقابلها
+    wanted_by_num: Dict[int, str] = {num: f"DAZN ELEVEN {num} PORTUGAL" for num in (1,2,3)}
 
-    out = []
+    out: List[str] = []
     i = 0
     updates = 0
 
     while i < len(lines):
         ln = lines[i]
         if ln.strip().startswith("#EXTINF"):
-            matched = None
-            for name, pat in dest_pats.items():
+            matched_num = None
+            for num, pat in dest_pats.items():
                 if pat.search(ln):
-                    # إذا ذُكرت بلد باسم آخر، لا نلمس إذا مو PT/PORTUGAL
-                    disp = ln.split(",",1)[1].lower() if "," in ln else ln.lower()
-                    if NEG_COUNTRIES.search(disp) and not PT_HINT.search(disp):
-                        continue
-                    matched = name
+                    matched_num = num
                     break
-            if matched and matched in picked:
-                out.append(ln)  # لا نغيّر نص الـEXTINF
-                new_url = picked[matched]
-                if i+1 < len(lines) and lines[i+1].strip() and not lines[i+1].strip().startswith("#"):
-                    if lines[i+1] != new_url:
-                        updates += 1
-                        print(f"[i] Updated URL for: {matched}")
+
+            if matched_num:
+                wanted_key = wanted_by_num[matched_num]
+                if wanted_key in picked:
+                    out.append(ln)  # لا تغيّر الـEXTINF إطلاقًا
+                    new_url = picked[wanted_key]
+                    # إذا اللي بعده URL: بدّله، وإلا أدرجه
+                    if i + 1 < len(lines) and lines[i + 1].strip() and not lines[i + 1].strip().startswith("#"):
+                        old_url = lines[i + 1]
+                        if old_url != new_url:
+                            updates += 1
+                            print(f"[i] Updated URL for: DAZN {matched_num}")
+                        else:
+                            print(f"[i] URL already up-to-date: DAZN {matched_num}")
+                        out.append(new_url)
+                        i += 2
+                        continue
                     else:
-                        print(f"[i] URL already up-to-date: {matched}")
-                    out.append(new_url)
-                    i += 2
-                    continue
-                else:
-                    updates += 1
-                    print(f"[i] Inserted URL for: {matched}")
-                    out.append(new_url)
-                    i += 1
-                    continue
+                        updates += 1
+                        print(f"[i] Inserted URL for: DAZN {matched_num}")
+                        out.append(new_url)
+                        i += 1
+                        continue
 
         out.append(ln)
         i += 1
 
-    return ("\n".join(out).rstrip()+"\n", updates)
+    return ("\n".join(out).rstrip() + "\n", updates)
 
 def upsert_github_file(repo: str, branch: str, path_in_repo: str, content_bytes: bytes, message: str, token: str):
     base = "https://api.github.com"
     url = f"{base}/repos/{repo}/contents/{path_in_repo}"
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
+
     sha = None
     get_res = requests.get(url, headers=headers, params={"ref": branch}, timeout=TIMEOUT)
     if get_res.status_code == 200:
         sha = get_res.json().get("sha")
+
     payload = {"message": message, "content": base64.b64encode(content_bytes).decode("utf-8"), "branch": branch}
-    if sha: payload["sha"] = sha
+    if sha:
+        payload["sha"] = sha
+
     put_res = requests.put(url, headers=headers, json=payload, timeout=TIMEOUT)
     if put_res.status_code not in (200, 201):
         raise RuntimeError(f"GitHub PUT failed: {put_res.status_code} {put_res.text}")
     return put_res.json()
 
 def main():
-    src = fetch_text(SOURCE_URL)
-    dest = fetch_text(DEST_RAW_URL)
+    # 1) المصدر & الوجهة
+    src_text = fetch_text(SOURCE_URL)
+    dest_text = fetch_text(DEST_RAW_URL)
 
-    pairs = parse_pairs(src)
+    # 2) التقط روابط DAZN ELEVEN PT 1/2/3 من المصدر
+    pairs = parse_pairs(src_text)
     picked = pick_from_source(pairs)
 
-    if not picked:
-        print("[x] No DAZN/ELEVEN PT streams found in source. Nothing to update.")
-    updated, nup = update_dest_urls_only(dest, picked)
+    # 3) حدّث فقط DAZN 1/2/3 في الوجهة (استبدال سطر الرابط الذي يلي الـEXTINF)
+    updated, n_up = update_dest_urls_only(dest_text, picked)
 
+    # 4) كتابة
     token = GITHUB_TOKEN
     if token:
         print(f"[i] Writing to GitHub: {GITHUB_REPO}@{GITHUB_BRANCH}:{DEST_REPO_PATH}")
         upsert_github_file(GITHUB_REPO, GITHUB_BRANCH, DEST_REPO_PATH, updated.encode("utf-8"), COMMIT_MESSAGE, token)
-        print("[✓] Done.")
+        print(f"[✓] Done. Updates: {n_up}")
     else:
-        p = Path(OUTPUT_LOCAL_PATH); p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(updated, encoding="utf-8"); print("[i] Wrote locally:", p.resolve())
+        p = Path(OUTPUT_LOCAL_PATH)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(updated, encoding="utf-8")
+        print(f"[i] Wrote locally: {p.resolve()} | Updates: {n_up}")
 
 if __name__ == "__main__":
     try:
