@@ -1,8 +1,8 @@
 #EXTM3U
 #EXTINF:-1, starzplay1
-https://test.vartv.live/hls/ch7.m3u8
-#EXTINF:-1, starzplay2
 https://stream.supertv.gg:3004/supertv/sport/stv9/ch9/ch9_720.m3u8
+#EXTINF:-1, starzplay2
+https://test.vartv.live/hls/ch7.m3u8
 #EXTINF:-1, abudhabi sport 1
 https://stream.supertv.gg:3004/supertv/sport/stv11/ch11/ch11_720.m3u8
 #EXTINF:-1, abudhabi sport 2 
