@@ -1,6 +1,6 @@
 #EXTM3U
 #EXTINF:-1, MBC 1
-https://stream.supertv.gg:3029/supertv/enter/stv9/ch9/ch9_720.m3u8
+https://mbc1-enc.edgenextcdn.net/out/v1/0965e4d7deae49179172426cbfb3bc5e/index_6.m3u8
 #EXTINF:-1, MBC 2
 https://stream.supertv.gg:3029/supertv/enter/stv2/ch2/ch2_720.m3u8
 #EXTINF:-1, MBC 3
