@@ -8,14 +8,14 @@ http://exm3u.extraott.com:80/live/ZUL96376/UG4VTW4E/122062.m3u8
 #EXTINF:-1, MBC 4
 https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-4/24f134f1cd63db9346439e96b86ca6ed/manifest/video/1080p2400kbps/video.m3u8
 #EXTINF:-1, mbc Action 
-https://stream.supertv.gg:3025/supertv/enter/stv5/ch5/ch5_720.m3u8
+http://exm3u.extraott.com:80/live/ZUL96376/UG4VTW4E/122066.m3u8
 #EXTINF:-1, MBC Drama+ 
-https://stream.supertv.gg:3028/supertv/enter/stv8/ch8/ch8_720.m3u8
+http://exm3u.extraott.com:80/live/ZUL96376/UG4VTW4E/122065.m3u8
 #EXTINF:-1, MBC Drama
-https://stream.supertv.gg:3027/supertv/enter/stv7/ch7/ch7_720.m3u8
+http://exm3u.extraott.com:80/live/ZUL96376/UG4VTW4E/122064.m3u8
 #EXTINF:-1, mbc masr 
 https://stream.supertv.gg:3030/supertv/enter/stv10/ch10/ch10_720.m3u8
 #EXTINF:-1, mbc masr2 
-https://stream.supertv.gg:3030/supertv/enter/stv11/ch11/ch11_720.m3u8
+http://exm3u.extraott.com:80/live/ZUL96376/UG4VTW4E/189738.m3u8
 #EXTINF:-1, mbc iraq 
 https://stream.supertv.gg:3021/supertv/enter/stv1/ch1/ch1_720.m3u8
