@@ -4,7 +4,7 @@ https://stream.supertv.gg:3010/supertv/sport/stv10/ch10/ch10_720.m3u8
 #EXTINF:-1, starzplay2
 https://stream.supertv.gg:3009/supertv/sport/stv9/ch9/ch9_720.m3u8
 #EXTINF:-1, abudhabi sport 1
-https://vo-live-media.cdb.cdn.orange.com/Content/Channel/AbuDhabiSportsChannel1/DASH/master.mpd?expires=1758297893&md5=ieokylGveAvMTC4fTcIckA
+https://vo-live-media.cdb.cdn.orange.com/Content/Channel/AbuDhabiSportsChannel1/HLS/index.m3u8
 #EXTINF:-1, abudhabi sport 2 
-https://vo-live-media.cdb.cdn.orange.com/Content/Channel/AbuDhabiSportsChannel2/DASH/master.mpd?expires=1758297971&md5=UXwLfzylZit7PUlYegRRyQ
+https://vo-live-media.cdb.cdn.orange.com/Content/Channel/AbuDhabiSportsChannel2/HLS/index.m3u8
 
