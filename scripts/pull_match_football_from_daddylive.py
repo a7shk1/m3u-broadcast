@@ -24,7 +24,7 @@ import requests
 
 SOURCE_URL = os.getenv(
     "SOURCE_URL",
-    "https://raw.githubusercontent.com/pigzillaaa/daddylive/refs/heads/main/daddylive-events.m3u8"
+    "https://raw.githubusercontent.com/pigzillaaa/daddylive/bc876b2f7935aeeb0df5b1c6b62b3c5f33998368/daddylive-channels-events.m3u8"
 )
 
 # ملف الوجهة (الخام للقراءة فقط، نستخدمه كنقطة بداية لنحافظ على المحتوى الآخر)
