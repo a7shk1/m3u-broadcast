@@ -14,14 +14,18 @@ jobs:
       TZ: Asia/Baghdad
       WATCH_URL: "https://dlhd.dad/watch.php?id=91"
       BUTTON_TITLE: "PLAYER 6"
-      DRY_RUN: "true"              # فحص فقط
+      DRY_RUN: "true"
       ALLOW_INSECURE_SSL: "true"
       CAPTURE_TIMEOUT_SEC: "90"
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # إذا عندك venv في /home/gha/ghavenv استخدمه:
+      # 👇 هذه الخطوة تحل الخطأ: تثبيت المتصفحات لحساب الخدمة (root)
+      - name: Install Playwright browsers (for this runner user)
+        run: |
+          /home/gha/ghavenv/bin/python -m playwright install --with-deps chromium
+
       - name: Run probe (prints m3u8 only)
         run: |
           /home/gha/ghavenv/bin/python scripts/update_bein.py
