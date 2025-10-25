@@ -1,46 +1,27 @@
-name: Probe m3u8 hourly (cloud, CDP/proxy capture)
+name: Probe m3u8 hourly (self-hosted)
 
 on:
   schedule:
-    - cron: "0 * * * *"   # كل ساعة (UTC)
+    - cron: "0 * * * *"
   workflow_dispatch:
 
 jobs:
   probe:
-    runs-on: ubuntu-22.04
+    runs-on: self-hosted
     permissions:
       contents: read
     env:
       TZ: Asia/Baghdad
       WATCH_URL: "https://dlhd.dad/watch.php?id=91"
       BUTTON_TITLE: "PLAYER 6"
-      DRY_RUN: "true"            # فحص فقط بالبداية (لا يحدّث bein.m3u)
-      CAPTURE_TIMEOUT_SEC: "90"  # زدها إذا يحتاج
+      DRY_RUN: "true"              # فحص فقط
+      ALLOW_INSECURE_SSL: "true"
+      CAPTURE_TIMEOUT_SEC: "90"
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install Google Chrome
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ca-certificates gnupg
-          sudo mkdir -p /etc/apt/keyrings
-          curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /etc/apt/keyrings/google-linux-signing-keyring.gpg
-          echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google-linux-signing-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      # تثبيت نسخ متوافقة (بدون webdriver-manager)
-      - name: Install Python deps (pinned)
-        run: |
-          python -m pip install --upgrade pip
-          pip install "selenium==4.21.0" "selenium-wire==5.1.0" "blinker==1.6.2" requests
-
+      # إذا عندك venv في /home/gha/ghavenv استخدمه:
       - name: Run probe (prints m3u8 only)
         run: |
-          python scripts/update_bein.py
+          /home/gha/ghavenv/bin/python scripts/update_bein.py
