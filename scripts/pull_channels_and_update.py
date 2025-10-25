@@ -7,7 +7,7 @@ from urllib.parse import urljoin
 import requests
 import urllib3
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
+from playwright.sync_api import sync_playwright
 
 # ===== إعدادات عامة =====
 WATCH_URL = os.getenv("WATCH_URL", "https://dlhd.dad/watch.php?id=91")
@@ -15,7 +15,7 @@ BUTTON_TITLE = os.getenv("BUTTON_TITLE", "PLAYER 6")
 M3U_PATH = "bein.m3u"
 DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
 ALLOW_INSECURE_SSL = os.getenv("ALLOW_INSECURE_SSL", "true").lower() == "true"
-CAPTURE_TIMEOUT_SEC = int(os.getenv("CAPTURE_TIMEOUT_SEC", "60"))  # وقت أطول
+CAPTURE_TIMEOUT_SEC = int(os.getenv("CAPTURE_TIMEOUT_SEC", "90"))
 
 if ALLOW_INSECURE_SSL:
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -25,7 +25,6 @@ DEFAULT_UA = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/126.0.0.0 Safari/537.36"
 )
-
 M3U8_REGEX = re.compile(r'https?://[^\s\'"]+\.m3u8(?:[^\s\'"]*)?', re.IGNORECASE)
 
 SESSION = requests.Session()
@@ -36,6 +35,7 @@ DEFAULT_HEADERS = {
     "Connection": "keep-alive",
 }
 
+captured_urls = []  # لتجميع كل الروابط المطلوبة (للتشخيص/الأرتيفاكت)
 
 def http_get(url, referer=None, retries=3, timeout=20):
     headers = DEFAULT_HEADERS.copy()
@@ -59,15 +59,11 @@ def http_get(url, referer=None, retries=3, timeout=20):
         time.sleep(1.1 * (i + 1))
     raise last_exc
 
-
 def extract_player_url_from_watch(html, base_url, title="PLAYER 6"):
     soup = BeautifulSoup(html, "html.parser")
-    # 1) زر بالعنوان مباشرة
     btn = soup.find("button", attrs={"title": title})
     if btn and btn.get("data-url"):
         return urljoin(base_url, btn["data-url"])
-
-    # 2) محاولات احتياطية
     for b in soup.find_all("button", class_=lambda c: c and "player-btn" in c):
         data_url = b.get("data-url")
         text = (b.get_text() or "").strip().lower()
@@ -75,15 +71,69 @@ def extract_player_url_from_watch(html, base_url, title="PLAYER 6"):
         if (data_url and "stream-91.php" in data_url) or text.endswith("player 6") or ttl.endswith("player 6"):
             if data_url:
                 return urljoin(base_url, data_url)
-
-    # 3) افتراضي معروف
     return urljoin(base_url, "/player/stream-91.php")
 
+# كود JS يُحقن مبكرًا لالتقاط fetch/XHR في كل الإطارات
+INIT_PATCH_JS = r"""
+(() => {
+  const log = (u) => {
+    try {
+      if (typeof window !== 'undefined' && window.__reportM3U8) {
+        window.__reportM3U8(u);
+      } else {
+        console.log("M3U8::" + u);
+      }
+    } catch (e) {
+      console.log("M3U8::" + u);
+    }
+  };
+
+  const isM3U8 = (u) => /https?:\/\/[^\s'"]+\.m3u8[^\s'"]*/i.test(String(u || ""));
+
+  // Patch fetch
+  try {
+    const _fetch = window.fetch;
+    if (_fetch && !_fetch.__m3u8_patched) {
+      window.fetch = async (...args) => {
+        try {
+          const url = args[0];
+          if (isM3U8(url)) log(url);
+        } catch (e) {}
+        const res = await _fetch(...args);
+        try {
+          const url = res?.url;
+          if (isM3U8(url)) log(url);
+        } catch (e) {}
+        return res;
+      };
+      window.fetch.__m3u8_patched = true;
+    }
+  } catch (e) {}
+
+  // Patch XMLHttpRequest
+  try {
+    const _open = XMLHttpRequest.prototype.open;
+    const _send = XMLHttpRequest.prototype.send;
+    if (!_open.__m3u8_patched) {
+      let lastUrl = null;
+      XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+        lastUrl = url;
+        return _open.call(this, method, url, ...rest);
+      };
+      XMLHttpRequest.prototype.send = function(...args) {
+        try { if (isM3U8(lastUrl)) log(lastUrl); } catch (e) {}
+        return _send.apply(this, args);
+      };
+      _open.__m3u8_patched = true;
+    }
+  } catch (e) {}
+})();
+"""
 
 def sniff_m3u8_with_playwright(player_url, referer):
     """
-    يفتح صفحة الـ Player (مع كل iframes)، يعطي تفاعل وتشغيل للفيديو،
-    ويراقب كل الطلبات من السياق لالتقاط أول .m3u8.
+    يفتح المشغّل، يحقن باتش fetch/XHR مبكرًا، ويراقب كل الإطارات والـ console + الشبكة.
+    يرجّع أول m3u8 يُلتقط.
     """
     print(f"[BROWSER] Launch Chromium headless…")
     with sync_playwright() as p:
@@ -95,23 +145,47 @@ def sniff_m3u8_with_playwright(player_url, referer):
             timezone_id="Asia/Baghdad",
             extra_http_headers={"Referer": referer, "Accept": "*/*"},
         )
+        # استلام إشعارات من JS
+        m3u8_holder = {"val": None}
+
+        def on_console(msg):
+            txt = msg.text()
+            if txt.startswith("M3U8::"):
+                url = txt.split("M3U8::", 1)[1].strip()
+                if url and m3u8_holder["val"] is None:
+                    m3u8_holder["val"] = url
+                    print(f"[CAPTURE][console] {url}")
+
+        context.on("console", on_console)
+
+        def on_request(req):
+            url = req.url
+            captured_urls.append(url)
+            if M3U8_REGEX.search(url) and m3u8_holder["val"] is None:
+                m3u8_holder["val"] = url
+                print(f"[CAPTURE][request] {url}")
+
+        def on_response(res):
+            url = res.url
+            captured_urls.append(url)
+            if M3U8_REGEX.search(url) and m3u8_holder["val"] is None:
+                m3u8_holder["val"] = url
+                print(f"[CAPTURE][response] {url}")
+
+        context.on("request", on_request)
+        context.on("response", on_response)
+
+        # الدالة التي نحقنها في كل صفحة/إطار
+        context.add_init_script(INIT_PATCH_JS)
+        # قناة رجوع من JS → بايثون
+        context.expose_function("__reportM3U8", lambda u: on_console(type("X", (), {"text": lambda: "M3U8::"+u})()))
+
         page = context.new_page()
-
-        found_url = {"val": None}
-
-        def maybe_set(u):
-            if M3U8_REGEX.search(u) and found_url["val"] is None:
-                found_url["val"] = u
-                print(f"[CAPTURE] {u}")
-
-        # راقب كل الطلبات/الردود على مستوى الـ context (يشمل الإطارات)
-        context.on("request", lambda req: maybe_set(req.url))
-        context.on("response", lambda res: maybe_set(res.url))
 
         print(f"[NAV] Goto watch page: {WATCH_URL}")
         page.goto(WATCH_URL, wait_until="domcontentloaded", timeout=45000)
 
-        # انقر على الزر Player 6 إن وجد
+        # انقر زر Player 6 في صفحة المشاهدة
         try:
             locator = page.locator(f"button[title='{BUTTON_TITLE}']")
             if locator.count() == 0:
@@ -121,68 +195,52 @@ def sniff_m3u8_with_playwright(player_url, referer):
         except Exception:
             print("[CLICK] Could not click watch-page button; may open player directly.")
 
-        # انتقل لصفحة المشغّل
+        # إلى صفحة المشغل
         print(f"[NAV] Goto player page: {player_url}")
         page.goto(player_url, wait_until="domcontentloaded", timeout=45000)
 
-        # 1) محاولات تشغيل وتفاعل على الصفحة الأم
+        # تفاعل وتحفيز تشغيل
         try:
             page.mouse.click(200, 200)
-        except Exception:
-            pass
-        try:
             page.keyboard.press("Space")
             page.keyboard.press("KeyK")
         except Exception:
             pass
 
-        # 2) اشتغل داخل كل iframe: انقر/شغل الفيديو إن وُجد
-        def poke_frame(f):
+        # حَقِن الباتش داخل أي إطار يُضاف لاحقًا وحاول نقر زر Play شائع
+        seen_frames = set()
+
+        def poke_frame(fr):
+            if fr in seen_frames:
+                return
+            seen_frames.add(fr)
             try:
-                # انقر وسط الإطار
-                f.click("body", timeout=2000)
+                fr.add_init_script(INIT_PATCH_JS)
             except Exception:
                 pass
-            # حاول تشغيل أي <video>
+            for sel in ["button[aria-label='Play']", ".jw-icon-playback", ".vjs-big-play-button", ".plyr__control--overlaid"]:
+                try:
+                    fr.click(sel, timeout=1500)
+                except Exception:
+                    pass
             try:
-                f.evaluate(
-                    """
-                    () => {
-                        const v = document.querySelector('video');
-                        if (v) {
-                            v.muted = true;
-                            const p = v.play?.();
-                            return 'video-found';
-                        }
-                        return 'no-video';
-                    }
-                    """
-                )
+                fr.evaluate("""() => { const v = document.querySelector('video'); if (v){ v.muted = true; v.play?.(); } }""")
             except Exception:
                 pass
 
-        # نفّذ poke لكل إطار، وراقب أي إطارات جديدة لاحقًا
+        # إطارات موجودة حاليًا
         for fr in page.frames:
             if fr != page.main_frame:
                 poke_frame(fr)
 
-        # بعض المشغلات تتأخر بتحميل iframe لاحقًا
+        # انتظر حتى CAPTURE_TIMEOUT_SEC أو العثور على m3u8
         end_time = time.time() + CAPTURE_TIMEOUT_SEC
         last_poke = 0
-        while time.time() < end_time and not found_url["val"]:
-            # إذا جاء iframe جديد حركه
+        while time.time() < end_time and not m3u8_holder["val"]:
+            # إطارات جديدة
             for fr in page.frames:
                 if fr != page.main_frame:
-                    try:
-                        # حاول العثور على زر تشغيل شائع (jwplayer, plyr, etc.)
-                        for sel in ["button[aria-label='Play']", ".jw-icon-playback", ".vjs-big-play-button", ".plyr__control--overlaid"]:
-                            try:
-                                fr.click(sel, timeout=1000)
-                            except Exception:
-                                pass
-                    except Exception:
-                        pass
-            # أعد المحاولات كل ~3 ثواني
+                    poke_frame(fr)
             if time.time() - last_poke > 3:
                 try:
                     page.mouse.click(220, 220)
@@ -192,25 +250,32 @@ def sniff_m3u8_with_playwright(player_url, referer):
                 last_poke = time.time()
             time.sleep(0.25)
 
-        # Fallback أخير: لو ما التقطنا عبر الشبكة، جرّب نقرأ HTML ونستخرج .m3u8
-        if not found_url["val"]:
+        # Fallback: بحث بالنص
+        if not m3u8_holder["val"]:
             try:
                 html = page.content()
                 m = M3U8_REGEX.search(html or "")
                 if m:
-                    found_url["val"] = m.group(0)
+                    m3u8_holder["val"] = m.group(0)
                     print("[FALLBACK] Captured from HTML content.")
             except Exception:
                 pass
 
+        # اكتب الدامب
+        try:
+            with open("network_dump.txt", "w", encoding="utf-8") as f:
+                for u in captured_urls:
+                    f.write(u + "\n")
+        except Exception:
+            pass
+
         context.close()
         browser.close()
 
-        if not found_url["val"]:
+        if not m3u8_holder["val"]:
             raise ValueError("تعذر استخراج رابط m3u8 من حركة الشبكة (Playwright).")
 
-        return found_url["val"]
-
+        return m3u8_holder["val"]
 
 def validate_m3u8_head(url, referer):
     try:
@@ -243,7 +308,6 @@ def validate_m3u8_head(url, referer):
         pass
     return False
 
-
 def update_bein_m3u(file_path, new_url):
     with open(file_path, "r", encoding="utf-8") as f:
         lines = f.read().splitlines()
@@ -256,7 +320,6 @@ def update_bein_m3u(file_path, new_url):
     if idx is None:
         raise ValueError("تعذر العثور على قناة 'bein sports 1' داخل الملف.")
 
-    # سطر الرابط الذي يلي الاسم
     url_line_i = None
     for j in range(idx + 1, min(idx + 5, len(lines))):
         if lines[j].strip().startswith("http"):
@@ -275,7 +338,6 @@ def update_bein_m3u(file_path, new_url):
         f.write("\n".join(lines) + "\n")
     return True
 
-
 def main():
     print(f"[INFO] Fetch watch page: {WATCH_URL}")
     watch_resp = http_get(WATCH_URL)
@@ -283,7 +345,6 @@ def main():
     player_url = extract_player_url_from_watch(watch_resp.text, WATCH_URL, title=BUTTON_TITLE)
     print(f"[INFO] Player URL: {player_url}")
 
-    # الترصّد عبر Playwright مثل Network tab (مع إطارات وتفاعل)
     m3u8_url = sniff_m3u8_with_playwright(player_url, referer=WATCH_URL)
     print(f"[OK] Extracted m3u8: {m3u8_url}")
 
@@ -297,10 +358,16 @@ def main():
     changed = update_bein_m3u(M3U_PATH, m3u8_url)
     print("[WRITE] bein.m3u updated." if changed else "[WRITE] No change needed.")
 
-
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
+        # اكتب الدامب حتى عند الفشل
+        try:
+            with open("network_dump.txt", "w", encoding="utf-8") as f:
+                for u in captured_urls:
+                    f.write(u + "\n")
+        except Exception:
+            pass
         print(f"[ERROR] {e}", file=sys.stderr)
         sys.exit(1)
