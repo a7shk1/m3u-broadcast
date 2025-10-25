@@ -1,262 +1,241 @@
-# scripts/pull_channels_and_update.py
-# -*- coding: utf-8 -*-
-"""
-يسحب روابط القنوات (TNT 1, TNT 2, Sky Sports Main Event UK, Sky Sports Premier League UK)
-من مصدر M3U ويحدث premierleague.m3u باستبدال **سطر الرابط فقط** الذي يلي #EXTINF
-لنفس القناة، بدون أي تغيير على نص الـEXTINF. لا يضيف قنوات جديدة.
-
-إصلاحات مهمة:
-- مطابقة مرنة للسورس (حتى لو الاسم داخل عنوان طويل/أقواس).
-- مطابقة صارمة للديستنيشن عبر regex للقناة على سطر الـEXTINF فقط.
-- لوج تفصيلي لمعرفة شنو انمسك وتبدّل.
-"""
-
 import os
 import re
 import sys
-import base64
-from pathlib import Path
-from typing import List, Tuple, Dict, Optional
+import time
+from urllib.parse import urljoin
+
 import requests
+import urllib3
+from bs4 import BeautifulSoup
+from playwright.sync_api import sync_playwright
 
-# ===== إعدادات (بدون تغيير معلماتك) =====
+# ===== إعدادات عامة =====
+WATCH_URL = os.getenv("WATCH_URL", "https://dlhd.dad/watch.php?id=91")
+BUTTON_TITLE = os.getenv("BUTTON_TITLE", "PLAYER 6")
+M3U_PATH = "bein.m3u"
+DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
+ALLOW_INSECURE_SSL = os.getenv("ALLOW_INSECURE_SSL", "true").lower() == "true"
 
-SOURCE_URL = os.getenv(
-    "SOURCE_URL",
-    "https://raw.githubusercontent.com/pigzillaaa/daddylive/bc876b2f7935aeeb0df5b1c6b62b3c5f33998368/daddylive-channels-events.m3u8"
+if ALLOW_INSECURE_SSL:
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+DEFAULT_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/126.0.0.0 Safari/537.36"
 )
 
-DEST_RAW_URL = os.getenv(
-    "DEST_RAW_URL",
-    "https://raw.githubusercontent.com/a7shk1/m3u-broadcast/refs/heads/main/premierleague.m3u"
-)
+M3U8_REGEX = re.compile(r'https?://[^\s\'"]+\.m3u8[^\s\'"]*', re.IGNORECASE)
 
-GITHUB_TOKEN   = os.getenv("GITHUB_TOKEN", "").strip()
-GITHUB_REPO    = os.getenv("GITHUB_REPO", "a7shk1/m3u-broadcast")
-GITHUB_BRANCH  = os.getenv("GITHUB_BRANCH", "main")
-DEST_REPO_PATH = os.getenv("DEST_REPO_PATH", "premierleague.m3u")
-COMMIT_MESSAGE = os.getenv("COMMIT_MESSAGE", "🔄 auto-update premierleague.m3u (every 5min)")
-
-OUTPUT_LOCAL_PATH = os.getenv("OUTPUT_LOCAL_PATH", "./out/premierleague.m3u")
-
-TIMEOUT = 25
-VERIFY_SSL = True
-
-# ===== القنوات =====
-WANTED_CHANNELS = [
-    "TNT 1",
-    "TNT 2",
-    "Sky Sports Main Event UK",
-    "Sky Sports Premier League UK",
-]
-
-# مطابقة السورس: نبحث على **سطر EXTINF كله** (حتى لو الاسم داخل العنوان/الأقواس)
-SOURCE_PATTERNS: Dict[str, List[re.Pattern]] = {
-    "TNT 1": [re.compile(r"\btnt\s*(sports)?\s*1\b", re.I)],
-    "TNT 2": [re.compile(r"\btnt\s*(sports)?\s*2\b", re.I)],
-    "Sky Sports Main Event UK": [
-        re.compile(r"\bsky\s*sports\s*main\s*event\b", re.I),
-        re.compile(r"\(.*sky\s*sports\s*main\s*event\s*(uk)?\).*", re.I),
-    ],
-    "Sky Sports Premier League UK": [
-        re.compile(r"\bsky\s*sports\s*premier\s*league\b", re.I),
-        re.compile(r"\(.*sky\s*sports\s*premier\s*league\s*(uk)?\).*", re.I),
-    ],
+SESSION = requests.Session()
+DEFAULT_HEADERS = {
+    "User-Agent": DEFAULT_UA,
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9,ar;q=0.8",
+    "Connection": "keep-alive",
 }
 
-# مطابقة الديستنيشن: **سطر EXTINF فقط**. مانغيّر نصه نهائيًا.
-DEST_EXTINF_PATTERNS: Dict[str, re.Pattern] = {
-    "TNT 1": re.compile(r"^#EXTINF[^,]*,\s*.*\btnt(\s*sports)?\s*1\b.*$", re.I),
-    "TNT 2": re.compile(r"^#EXTINF[^,]*,\s*.*\btnt(\s*sports)?\s*2\b.*$", re.I),
-    "Sky Sports Main Event UK": re.compile(
-        r"^#EXTINF[^,]*,\s*.*\bsky\s*sports\s*main\s*event\b.*$", re.I
-    ),
-    "Sky Sports Premier League UK": re.compile(
-        r"^#EXTINF[^,]*,\s*.*\bsky\s*sports\s*premier\s*league\b.*$", re.I
-    ),
-}
 
-UK_MARKERS = (" uk", "(uk", "[uk", " united kingdom", "🇬🇧")
+def http_get(url, referer=None, retries=3, timeout=20):
+    headers = DEFAULT_HEADERS.copy()
+    if referer:
+        headers["Referer"] = referer
+    last_exc = None
+    for i in range(retries):
+        try:
+            resp = SESSION.get(
+                url,
+                headers=headers,
+                timeout=timeout,
+                allow_redirects=True,
+                verify=not ALLOW_INSECURE_SSL,
+            )
+            if resp.status_code == 200:
+                return resp
+            last_exc = RuntimeError(f"HTTP {resp.status_code} for {url}")
+        except Exception as e:
+            last_exc = e
+        time.sleep(1.1 * (i + 1))
+    raise last_exc
 
-# ===== وظائف مساعدة =====
 
-def fetch_text(url: str) -> str:
-    r = requests.get(url, timeout=TIMEOUT, verify=VERIFY_SSL)
-    r.raise_for_status()
-    return r.text
+def extract_player_url_from_watch(html, base_url, title="PLAYER 6"):
+    soup = BeautifulSoup(html, "html.parser")
 
-def parse_m3u_pairs(m3u_text: str) -> List[Tuple[str, Optional[str]]]:
-    """[(extinf_line, url_or_None), ...]"""
-    lines = [ln.rstrip("\n") for ln in m3u_text.splitlines()]
-    out: List[Tuple[str, Optional[str]]] = []
-    i = 0
-    while i < len(lines):
-        ln = lines[i].strip()
-        if ln.startswith("#EXTINF"):
-            url = None
-            if i + 1 < len(lines):
-                nxt = lines[i + 1].strip()
-                if nxt and not nxt.startswith("#"):
-                    url = nxt
-            out.append((lines[i], url))
-            i += 2
-            continue
-        i += 1
-    return out
+    # 1) زر بالعنوان مباشرة
+    btn = soup.find("button", attrs={"title": title})
+    if btn and btn.get("data-url"):
+        return urljoin(base_url, btn["data-url"])
 
-def source_match(extinf_line: str, target: str) -> bool:
-    pats = SOURCE_PATTERNS.get(target, [])
-    return any(p.search(extinf_line) for p in pats)
+    # 2) محاولات احتياطية
+    for b in soup.find_all("button", class_=lambda c: c and "player-btn" in c):
+        data_url = b.get("data-url")
+        text = (b.get_text() or "").strip().lower()
+        ttl = (b.get("title") or "").strip().lower()
+        if (data_url and "stream-91.php" in data_url) or text.endswith("player 6") or ttl.endswith("player 6"):
+            if data_url:
+                return urljoin(base_url, data_url)
 
-def pick_wanted(source_pairs: List[Tuple[str, Optional[str]]]) -> Dict[str, str]:
+    # 3) افتراضي معروف عندك
+    return urljoin(base_url, "/player/stream-91.php")
+
+
+def sniff_m3u8_with_playwright(player_url, referer):
     """
-    التقط أفضل URL من السورس لكل قناة مطلوبة (تفضيل UK/🇬🇧 و HD/FHD/UHD و EN).
+    يفتح صفحة الـ Player عبر Chromium headless،
+    يترصّد حركة الشبكة ويرجع أول رابط .m3u8 يتم طلبه/الرد عليه.
     """
-    candidates: Dict[str, List[Tuple[str, str]]] = {name: [] for name in WANTED_CHANNELS}
+    print(f"[BROWSER] Launch Chromium headless…")
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context(
+            user_agent=DEFAULT_UA,
+            ignore_https_errors=ALLOW_INSECURE_SSL,
+            java_script_enabled=True,
+            timezone_id="Asia/Baghdad",
+            extra_http_headers={"Referer": referer, "Accept": "*/*"},
+        )
+        page = context.new_page()
 
-    def has_uk_tag(s: str) -> bool:
-        s_low = s.lower()
-        return any(tag in s_low for tag in UK_MARKERS) or "🇬🇧" in s
+        found_url = {"val": None}
 
-    for extinf, url in source_pairs:
-        if not url:
-            continue
-        for name in WANTED_CHANNELS:
-            if source_match(extinf, name):
-                candidates[name].append((extinf, url))
+        def handle_request(req):
+            url = req.url
+            if M3U8_REGEX.search(url) and found_url["val"] is None:
+                found_url["val"] = url
+                print(f"[CAPTURE][request] {url}")
 
-    picked: Dict[str, str] = {}
-    for name, lst in candidates.items():
-        if not lst:
-            continue
+        def handle_response(res):
+            url = res.url
+            if M3U8_REGEX.search(url) and found_url["val"] is None:
+                found_url["val"] = url
+                print(f"[CAPTURE][response] {url}")
 
-        def score(item: Tuple[str, str]) -> int:
-            ext = item[0].lower()
-            sc = 0
-            if has_uk_tag(ext): sc += 5
-            if any(q in ext for q in (" uhd", " 4k", " fhd", " hd")): sc += 2
-            if re.search(r"\b(en|english)\b", ext): sc += 1
-            return sc
+        page.on("request", handle_request)
+        page.on("response", handle_response)
 
-        best = sorted(lst, key=score, reverse=True)[0]
-        picked[name] = best[1]
+        print(f"[NAV] Goto watch page: {WATCH_URL}")
+        page.goto(WATCH_URL, wait_until="domcontentloaded", timeout=30000)
 
-    # لوج
-    print("[i] Source candidates picked:")
-    for n in WANTED_CHANNELS:
-        print(f"  {'✓' if n in picked else 'x'} {n}")
-    return picked
+        # حاول النقر على الزر مثل ما تعمل يدويًا
+        try:
+            locator = page.locator(f"button[title='{BUTTON_TITLE}']")
+            if locator.count() == 0:
+                # بديل نصي
+                locator = page.get_by_text(BUTTON_TITLE, exact=False)
+            locator.first.click(timeout=8000)
+            print(f"[CLICK] Clicked '{BUTTON_TITLE}'")
+        except Exception:
+            # لو فشل النقر، نروح مباشرة لعنوان المشغل
+            print("[CLICK] Could not click button; will navigate directly to player URL.")
 
-def update_dest_urls_only(dest_text: str, picked_urls: Dict[str, str]) -> Tuple[str, int]:
-    """
-    يمر على الديستنيشن ويبدّل **سطر الرابط فقط** بعد كل EXTINF مطابق.
-    يرجّع (النص النهائي، عدد التحديثات).
-    """
-    lines = [ln.rstrip("\n") for ln in dest_text.splitlines()]
-    if not lines or not lines[0].strip().upper().startswith("#EXTM3U"):
-        lines = ["#EXTM3U"] + lines
+        # نضمن وصولنا لصفحة المشغل نفسها
+        print(f"[NAV] Goto player page: {player_url}")
+        page.goto(player_url, wait_until="domcontentloaded", timeout=30000)
 
-    out: List[str] = []
-    i = 0
-    updates = 0
+        # انتظر حتى يظهر أي طلب m3u8
+        deadline = time.time() + 25  # ثواني
+        while time.time() < deadline and found_url["val"] is None:
+            time.sleep(0.25)
 
-    while i < len(lines):
-        ln = lines[i]
-        if ln.strip().startswith("#EXTINF"):
-            matched_name = None
-            for name, pat in DEST_EXTINF_PATTERNS.items():
-                if pat.search(ln):
-                    matched_name = name
-                    break
+        context.close()
+        browser.close()
 
-            if matched_name and matched_name in picked_urls:
-                # إبقي الـEXTINF كما هو
-                out.append(ln)
-                new_url = picked_urls[matched_name]
+        if not found_url["val"]:
+            raise ValueError("تعذر استخراج رابط m3u8 من حركة الشبكة (Playwright).")
 
-                # إذا السطر البعده URL (مو تعليق): بدّله، وإلا أدرجه
-                if i + 1 < len(lines) and lines[i + 1].strip() and not lines[i + 1].strip().startswith("#"):
-                    old_url = lines[i + 1]
-                    if old_url != new_url:
-                        updates += 1
-                        print(f"[i] Updated URL for: {matched_name}")
-                    else:
-                        print(f"[i] URL already up-to-date: {matched_name}")
-                    out.append(new_url)
-                    i += 2
-                    continue
-                else:
-                    updates += 1
-                    print(f"[i] Inserted URL for: {matched_name}")
-                    out.append(new_url)
-                    i += 1
-                    continue
+        return found_url["val"]
 
-        out.append(ln)
-        i += 1
 
-    return ("\n".join(out).rstrip() + "\n", updates)
+def validate_m3u8_head(url, referer):
+    try:
+        headers = DEFAULT_HEADERS.copy()
+        headers["Referer"] = referer
+        r = SESSION.head(
+            url,
+            headers=headers,
+            timeout=15,
+            allow_redirects=True,
+            verify=not ALLOW_INSECURE_SSL,
+        )
+        if r.status_code < 400:
+            return True
+    except Exception:
+        pass
+    try:
+        r = SESSION.get(
+            url,
+            headers={"Referer": referer, **DEFAULT_HEADERS},
+            timeout=20,
+            stream=True,
+            verify=not ALLOW_INSECURE_SSL,
+        )
+        if r.status_code < 400:
+            chunk = next(r.iter_content(chunk_size=2048), b"")
+            if b"#EXTM3U" in chunk:
+                return True
+    except Exception:
+        pass
+    return False
 
-def upsert_github_file(repo: str, branch: str, path_in_repo: str, content_bytes: bytes, message: str, token: str):
-    base = "https://api.github.com"
-    url = f"{base}/repos/{repo}/contents/{path_in_repo}"
-    headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
 
-    sha = None
-    get_res = requests.get(url, headers=headers, params={"ref": branch}, timeout=TIMEOUT)
-    if get_res.status_code == 200:
-        sha = get_res.json().get("sha")
+def update_bein_m3u(file_path, new_url):
+    with open(file_path, "r", encoding="utf-8") as f:
+        lines = f.read().splitlines()
 
-    payload = {
-        "message": message,
-        "content": base64.b64encode(content_bytes).decode("utf-8"),
-        "branch": branch,
-    }
-    if sha:
-        payload["sha"] = sha
+    idx = None
+    for i, line in enumerate(lines):
+        if "bein sports 1" in line.lower():
+            idx = i
+            break
+    if idx is None:
+        raise ValueError("تعذر العثور على قناة 'bein sports 1' داخل الملف.")
 
-    put_res = requests.put(url, headers=headers, json=payload, timeout=TIMEOUT)
-    if put_res.status_code not in (200, 201):
-        raise RuntimeError(f"GitHub PUT failed: {put_res.status_code} {put_res.text}")
-    return put_res.json()
+    # سطر الرابط الذي يلي الاسم
+    url_line_i = None
+    for j in range(idx + 1, min(idx + 5, len(lines))):
+        if lines[j].strip().startswith("http"):
+            url_line_i = j
+            break
+
+    if url_line_i is None:
+        url_line_i = idx + 1
+        while url_line_i > len(lines):
+            lines.append("")
+        lines.insert(url_line_i, new_url)
+    else:
+        lines[url_line_i] = new_url
+
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+    return True
+
 
 def main():
-    # 1) حمّل المصدر والوجهة
-    src_text = fetch_text(SOURCE_URL)
-    dest_text = fetch_text(DEST_RAW_URL)
+    print(f"[INFO] Fetch watch page: {WATCH_URL}")
+    watch_resp = http_get(WATCH_URL)
 
-    # 2) اختَر أفضل روابط من السورس
-    pairs = parse_m3u_pairs(src_text)
-    picked_urls = pick_wanted(pairs)
+    player_url = extract_player_url_from_watch(watch_resp.text, WATCH_URL, title=BUTTON_TITLE)
+    print(f"[INFO] Player URL: {player_url}")
 
-    # 3) حدّث الديستنيشن (سطر URL فقط)
-    updated_text, updates = update_dest_urls_only(dest_text, picked_urls)
+    # الترصّد عبر Playwright مثل Network tab
+    m3u8_url = sniff_m3u8_with_playwright(player_url, referer=WATCH_URL)
+    print(f"[OK] Extracted m3u8: {m3u8_url}")
 
-    # 4) اكتب إلى GitHub أو محليًا
-    if updates == 0:
-        print("[i] No changes to write.")
-        # حتى لو ماكو تغيير، نكتب محليًا إذا ماكو توكن (للتحقق)
-    token = GITHUB_TOKEN
-    if token:
-        print(f"[i] Writing to GitHub: {GITHUB_REPO}@{GITHUB_BRANCH}:{DEST_REPO_PATH}")
-        res = upsert_github_file(
-            repo=GITHUB_REPO,
-            branch=GITHUB_BRANCH,
-            path_in_repo=DEST_REPO_PATH,
-            content_bytes=updated_text.encode("utf-8"),
-            message=COMMIT_MESSAGE,
-            token=token,
-        )
-        print("[✓] Updated:", res.get("content", {}).get("path"))
-    else:
-        p = Path(OUTPUT_LOCAL_PATH)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(updated_text, encoding="utf-8")
-        print("[i] Wrote locally to:", p.resolve())
+    is_valid = validate_m3u8_head(m3u8_url, referer=player_url)
+    print(f"[CHECK] m3u8 validation: {'PASS' if is_valid else 'WARN'}")
+
+    if DRY_RUN:
+        print("[DRY-RUN] لن يتم تعديل bein.m3u في هذا الوضع.")
+        return
+
+    changed = update_bein_m3u(M3U_PATH, m3u8_url)
+    print("[WRITE] bein.m3u updated." if changed else "[WRITE] No change needed.")
+
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print("[x] Error:", e)
+        print(f"[ERROR] {e}", file=sys.stderr)
         sys.exit(1)
