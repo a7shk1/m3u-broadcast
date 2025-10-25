@@ -14,7 +14,8 @@ jobs:
       TZ: Asia/Baghdad
       WATCH_URL: "https://dlhd.dad/watch.php?id=91"
       BUTTON_TITLE: "PLAYER 6"
-      DRY_RUN: "true"      # وضع التجربة: لا تعديل للملفات
+      DRY_RUN: "true"              # وضع التجربة: لا تعديل للملفات
+      ALLOW_INSECURE_SSL: "true"   # تجاوز فحص الشهادة (لحل مشكلة SSL على Runner)
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
