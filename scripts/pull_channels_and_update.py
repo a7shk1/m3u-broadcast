@@ -30,36 +30,24 @@ def build_driver():
     chrome_opts.add_argument("--lang=en-US")
     chrome_opts.add_argument("--mute-audio")
     chrome_opts.add_argument("--autoplay-policy=no-user-gesture-required")
-
-    # تفعيل لوج الأداء عبر CDP إن لزم: نضيف كقدرة على الـ options
     chrome_opts.set_capability("goog:loggingPrefs", {"performance": "ALL", "browser": "ALL"})
 
-    # selenium-wire proxy options
     seleniumwire_opts = {
         "request_storage": "memory",
         "request_storage_max_size": 4000,
     }
 
-    # نستخدم Selenium Manager (لا نمرّر executable_path ولا Service)
+    # نستخدم Selenium Manager تلقائيًا (لا نمرّر executable_path ولا Service)
     driver = webdriver.Chrome(options=chrome_opts, seleniumwire_options=seleniumwire_opts)
     driver.set_page_load_timeout(45)
     driver.implicitly_wait(8)
     return driver
 
-def get_m3u8_from_requests(driver):
-    for req in driver.requests:
-        url = getattr(req, "url", "") or ""
-        if M3U8_RE.search(url):
-            return url
-    return None
-
 def click_player_6(driver):
-    # 1) حسب العنوان
     with contextlib.suppress(Exception):
         btn = driver.find_element(By.CSS_SELECTOR, f"button[title='{BUTTON_TITLE}']")
         btn.click()
         return True
-    # 2) حسب النص
     with contextlib.suppress(Exception):
         for b in driver.find_elements(By.CSS_SELECTOR, "button"):
             txt = (b.text or "").strip().lower()
@@ -143,10 +131,12 @@ def main():
         seen = set()
         while time.time() < deadline and not captured:
             for req in driver.requests:
-                if getattr(req, "id", None) in seen:
+                rid = getattr(req, "id", None)
+                if rid in seen:
                     continue
-                if hasattr(req, "id"):
-                    seen.add(req.id)
+            #    ^ بعض الإصدارات قد لا تحوي id؛ نتعامل برفق
+                if rid is not None:
+                    seen.add(rid)
                 url = getattr(req, "url", "") or ""
                 if M3U8_RE.search(url):
                     captured = url
