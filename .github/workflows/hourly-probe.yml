@@ -1,4 +1,4 @@
-name: Probe m3u8 hourly (no file changes)
+name: Probe m3u8 hourly (cloud, CDP/proxy capture)
 
 on:
   schedule:
@@ -7,18 +7,28 @@ on:
 
 jobs:
   probe:
-    runs-on: ubuntu-22.04   # ← مهم: ثبّت الإصدار لتجنب مشكلة deps على 24.04
+    runs-on: ubuntu-22.04
     permissions:
       contents: read
     env:
       TZ: Asia/Baghdad
       WATCH_URL: "https://dlhd.dad/watch.php?id=91"
       BUTTON_TITLE: "PLAYER 6"
-      DRY_RUN: "true"              # فحص فقط
-      ALLOW_INSECURE_SSL: "true"   # لتجاوز SSL على Runner
+      DRY_RUN: "true"              # فحص فقط بالبداية
+      CAPTURE_TIMEOUT_SEC: "90"    # زِدها إذا احتجت
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+
+      - name: Install Google Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ca-certificates gnupg
+          sudo mkdir -p /etc/apt/keyrings
+          curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /etc/apt/keyrings/google-linux-signing-keyring.gpg
+          echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google-linux-signing-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -28,12 +38,7 @@ jobs:
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      # تثبيت متصفحات Playwright + نظامياتها بشكل رسمي
-      - name: Install Playwright (browsers + system deps)
-        run: |
-          python -m playwright install --with-deps chromium
+          pip install selenium-wire webdriver-manager requests
 
       - name: Run probe (prints m3u8 only)
         run: |
