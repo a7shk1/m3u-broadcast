@@ -1,0 +1,34 @@
+name: Probe m3u8 hourly (no file changes)
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # كل ساعة (UTC)
+  workflow_dispatch:      # تشغيل يدوي
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read       # ما نحتاج كتابة الآن
+    env:
+      TZ: Asia/Baghdad
+      WATCH_URL: "https://dlhd.dad/watch.php?id=91"
+      BUTTON_TITLE: "PLAYER 6"
+      DRY_RUN: "true"      # وضع التجربة: لا تعديل للملفات
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run probe (prints m3u8 only)
+        run: |
+          python scripts/update_bein.py
