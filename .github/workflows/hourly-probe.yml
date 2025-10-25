@@ -9,13 +9,13 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     permissions:
-      contents: read       # ما نحتاج كتابة الآن
+      contents: read       # فحص فقط (لا نكتب تغييرات)
     env:
       TZ: Asia/Baghdad
       WATCH_URL: "https://dlhd.dad/watch.php?id=91"
       BUTTON_TITLE: "PLAYER 6"
-      DRY_RUN: "true"              # وضع التجربة: لا تعديل للملفات
-      ALLOW_INSECURE_SSL: "true"   # تجاوز فحص الشهادة (لحل مشكلة SSL على Runner)
+      DRY_RUN: "true"              # لا نعدّل الملف الآن
+      ALLOW_INSECURE_SSL: "true"   # تجاوز مشاكل SSL على Runner
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -25,10 +25,18 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Install Python deps
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
+      # ✅ الأكشن الرسمي يثبت Chromium وكل المتطلبات
+      - name: Install Playwright Browsers
+        uses: microsoft/playwright-github-action@v1
+        with:
+          with-deps: true
+          # نحتاج Chromium فقط
+          browsers: chromium
 
       - name: Run probe (prints m3u8 only)
         run: |
