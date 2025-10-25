@@ -2,237 +2,197 @@ import os
 import re
 import sys
 import time
-from urllib.parse import urljoin
+import contextlib
 
+from seleniumwire import webdriver  # يلتقط كل الشبكة عبر بروكسي داخلي
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.keys import Keys
+from webdriver_manager.chrome import ChromeDriverManager
 import requests
-import urllib3
-from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
 
-# ===== إعدادات عامة =====
 WATCH_URL = os.getenv("WATCH_URL", "https://dlhd.dad/watch.php?id=91")
 BUTTON_TITLE = os.getenv("BUTTON_TITLE", "PLAYER 6")
 M3U_PATH = "bein.m3u"
 DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
-ALLOW_INSECURE_SSL = os.getenv("ALLOW_INSECURE_SSL", "true").lower() == "true"
+CAPTURE_TIMEOUT_SEC = int(os.getenv("CAPTURE_TIMEOUT_SEC", "90"))
 
-if ALLOW_INSECURE_SSL:
-    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+M3U8_RE = re.compile(r'https?://[^\s\'"]+\.m3u8(?:\?[^\s\'"]*)?', re.IGNORECASE)
 
-DEFAULT_UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/126.0.0.0 Safari/537.36"
-)
+def build_driver():
+    chrome_opts = Options()
+    # تشغيل Headless حديث (يدعم مزايا أحدث)
+    chrome_opts.add_argument("--headless=new")
+    chrome_opts.add_argument("--disable-gpu")
+    chrome_opts.add_argument("--no-sandbox")
+    chrome_opts.add_argument("--disable-dev-shm-usage")
+    chrome_opts.add_argument("--disable-features=AutomationControlled")
+    chrome_opts.add_argument("--window-size=1280,800")
+    chrome_opts.add_argument("--lang=en-US")
+    chrome_opts.add_argument("--mute-audio")
+    # مهم لبعض المواقع
+    chrome_opts.add_argument("--autoplay-policy=no-user-gesture-required")
 
-M3U8_REGEX = re.compile(r'https?://[^\s\'"]+\.m3u8[^\s\'"]*', re.IGNORECASE)
+    # قدرات لجمع الأداء/الشبكة من CDP أيضًا (ازدواج للضمان)
+    caps = DesiredCapabilities.CHROME.copy()
+    caps["goog:loggingPrefs"] = {"performance": "ALL", "browser": "ALL"}
 
-SESSION = requests.Session()
-DEFAULT_HEADERS = {
-    "User-Agent": DEFAULT_UA,
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9,ar;q=0.8",
-    "Connection": "keep-alive",
-}
+    # إعدادات selenium-wire (بروكسي داخلي لالتقاط HTTPS أيضاً)
+    seleniumwire_opts = {
+        "request_storage": "memory",
+        "request_storage_max_size": 3000,
+        # بإمكانك تمرير headers ثابتة هنا إن احتجت
+    }
 
+    driver = webdriver.Chrome(
+        driver=ChromeDriverManager().install(),
+        options=chrome_opts,
+        seleniumwire_options=seleniumwire_opts,
+        desired_capabilities=caps,
+    )
+    driver.set_page_load_timeout(45)
+    driver.implicitly_wait(8)
+    return driver
 
-def http_get(url, referer=None, retries=3, timeout=20):
-    headers = DEFAULT_HEADERS.copy()
-    if referer:
-        headers["Referer"] = referer
-    last_exc = None
-    for i in range(retries):
-        try:
-            resp = SESSION.get(
-                url,
-                headers=headers,
-                timeout=timeout,
-                allow_redirects=True,
-                verify=not ALLOW_INSECURE_SSL,
-            )
-            if resp.status_code == 200:
-                return resp
-            last_exc = RuntimeError(f"HTTP {resp.status_code} for {url}")
-        except Exception as e:
-            last_exc = e
-        time.sleep(1.1 * (i + 1))
-    raise last_exc
+def get_m3u8_from_requests(driver):
+    # افحص الطلبات الحية
+    for req in driver.requests:
+        url = getattr(req, "url", "") or ""
+        if M3U8_RE.search(url):
+            return url
+    return None
 
-
-def extract_player_url_from_watch(html, base_url, title="PLAYER 6"):
-    soup = BeautifulSoup(html, "html.parser")
-
-    # 1) زر بالعنوان مباشرة
-    btn = soup.find("button", attrs={"title": title})
-    if btn and btn.get("data-url"):
-        return urljoin(base_url, btn["data-url"])
-
-    # 2) محاولات احتياطية
-    for b in soup.find_all("button", class_=lambda c: c and "player-btn" in c):
-        data_url = b.get("data-url")
-        text = (b.get_text() or "").strip().lower()
-        ttl = (b.get("title") or "").strip().lower()
-        if (data_url and "stream-91.php" in data_url) or text.endswith("player 6") or ttl.endswith("player 6"):
-            if data_url:
-                return urljoin(base_url, data_url)
-
-    # 3) افتراضي معروف عندك
-    return urljoin(base_url, "/player/stream-91.php")
-
-
-def sniff_m3u8_with_playwright(player_url, referer):
-    """
-    يفتح صفحة الـ Player عبر Chromium headless،
-    يترصّد حركة الشبكة ويرجع أول رابط .m3u8 يتم طلبه/الرد عليه.
-    """
-    print(f"[BROWSER] Launch Chromium headless…")
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context(
-            user_agent=DEFAULT_UA,
-            ignore_https_errors=ALLOW_INSECURE_SSL,
-            java_script_enabled=True,
-            timezone_id="Asia/Baghdad",
-            extra_http_headers={"Referer": referer, "Accept": "*/*"},
-        )
-        page = context.new_page()
-
-        found_url = {"val": None}
-
-        def handle_request(req):
-            url = req.url
-            if M3U8_REGEX.search(url) and found_url["val"] is None:
-                found_url["val"] = url
-                print(f"[CAPTURE][request] {url}")
-
-        def handle_response(res):
-            url = res.url
-            if M3U8_REGEX.search(url) and found_url["val"] is None:
-                found_url["val"] = url
-                print(f"[CAPTURE][response] {url}")
-
-        page.on("request", handle_request)
-        page.on("response", handle_response)
-
-        print(f"[NAV] Goto watch page: {WATCH_URL}")
-        page.goto(WATCH_URL, wait_until="domcontentloaded", timeout=30000)
-
-        # حاول النقر على الزر مثل ما تعمل يدويًا
-        try:
-            locator = page.locator(f"button[title='{BUTTON_TITLE}']")
-            if locator.count() == 0:
-                # بديل نصي
-                locator = page.get_by_text(BUTTON_TITLE, exact=False)
-            locator.first.click(timeout=8000)
-            print(f"[CLICK] Clicked '{BUTTON_TITLE}'")
-        except Exception:
-            # لو فشل النقر، نروح مباشرة لعنوان المشغل
-            print("[CLICK] Could not click button; will navigate directly to player URL.")
-
-        # نضمن وصولنا لصفحة المشغل نفسها
-        print(f"[NAV] Goto player page: {player_url}")
-        page.goto(player_url, wait_until="domcontentloaded", timeout=30000)
-
-        # انتظر حتى يظهر أي طلب m3u8
-        deadline = time.time() + 25  # ثواني
-        while time.time() < deadline and found_url["val"] is None:
-            # بعض المشغلات تؤخر التحميل
-            time.sleep(0.25)
-
-        context.close()
-        browser.close()
-
-        if not found_url["val"]:
-            raise ValueError("تعذر استخراج رابط m3u8 من حركة الشبكة (Playwright).")
-
-        return found_url["val"]
-
-
-def validate_m3u8_head(url, referer):
-    try:
-        headers = DEFAULT_HEADERS.copy()
-        headers["Referer"] = referer
-        r = SESSION.head(
-            url,
-            headers=headers,
-            timeout=15,
-            allow_redirects=True,
-            verify=not ALLOW_INSECURE_SSL,
-        )
-        if r.status_code < 400:
-            return True
-    except Exception:
-        pass
-    try:
-        r = SESSION.get(
-            url,
-            headers={"Referer": referer, **DEFAULT_HEADERS},
-            timeout=20,
-            stream=True,
-            verify=not ALLOW_INSECURE_SSL,
-        )
-        if r.status_code < 400:
-            chunk = next(r.iter_content(chunk_size=2048), b"")
-            if b"#EXTM3U" in chunk:
+def click_player_6(driver):
+    # حاول بالنص/العنوان/الـ data-url
+    # 1) حسب العنوان
+    with contextlib.suppress(Exception):
+        btn = driver.find_element(By.CSS_SELECTOR, f"button[title='{BUTTON_TITLE}']")
+        btn.click()
+        return True
+    # 2) حسب النص
+    with contextlib.suppress(Exception):
+        btns = driver.find_elements(By.CSS_SELECTOR, "button")
+        for b in btns:
+            txt = (b.text or "").strip().lower()
+            if "player 6" in txt:
+                b.click()
                 return True
-    except Exception:
-        pass
     return False
 
+def stimulate_play(driver):
+    # بعض المشغلات تحتاج تفاعل/کیبورد
+    try:
+        ActionChains(driver).move_by_offset(200, 200).click().perform()
+        ActionChains(driver).send_keys(Keys.SPACE).perform()
+        ActionChains(driver).send_keys("k").perform()
+    except Exception:
+        pass
+
+def validate_m3u8(url):
+    try:
+        r = requests.get(url, timeout=20, stream=True)
+        if r.status_code >= 400:
+            return False
+        chunk = next(r.iter_content(chunk_size=2048), b"")
+        return (b"#EXTM3U" in chunk) or url.lower().endswith(".m3u8")
+    except Exception:
+        return False
 
 def update_bein_m3u(file_path, new_url):
     with open(file_path, "r", encoding="utf-8") as f:
         lines = f.read().splitlines()
 
+    # ابحث عن سطر اسم القناة
     idx = None
     for i, line in enumerate(lines):
         if "bein sports 1" in line.lower():
             idx = i
             break
     if idx is None:
-        raise ValueError("تعذر العثور على قناة 'bein sports 1' داخل الملف.")
+        raise ValueError("تعذر العثور على قناة 'bein sports 1' داخل bein.m3u")
 
-    # سطر الرابط الذي يلي الاسم
-    url_line_i = None
-    for j in range(idx + 1, min(idx + 5, len(lines))):
+    # السطر التالي عادةً هو الرابط
+    url_line = None
+    for j in range(idx + 1, min(idx + 6, len(lines))):
         if lines[j].strip().startswith("http"):
-            url_line_i = j
+            url_line = j
             break
-
-    if url_line_i is None:
-        url_line_i = idx + 1
-        while url_line_i > len(lines):
-            lines.append("")
-        lines.insert(url_line_i, new_url)
+    if url_line is None:
+        lines.insert(idx + 1, new_url)
     else:
-        lines[url_line_i] = new_url
+        if lines[url_line].strip() == new_url.strip():
+            return False
+        lines[url_line] = new_url
 
     with open(file_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
     return True
 
-
 def main():
-    print(f"[INFO] Fetch watch page: {WATCH_URL}")
-    watch_resp = http_get(WATCH_URL)
+    print(f"[NAV] {WATCH_URL}")
+    driver = build_driver()
+    try:
+        driver.get(WATCH_URL)
 
-    player_url = extract_player_url_from_watch(watch_resp.text, WATCH_URL, title=BUTTON_TITLE)
-    print(f"[INFO] Player URL: {player_url}")
+        # اضغط Player 6
+        clicked = click_player_6(driver)
+        print(f"[CLICK] Player 6: {'OK' if clicked else 'NOT FOUND (continuing)'}")
 
-    # الترصّد عبر Playwright مثل Network tab
-    m3u8_url = sniff_m3u8_with_playwright(player_url, referer=WATCH_URL)
-    print(f"[OK] Extracted m3u8: {m3u8_url}")
+        # أعطِ الصفحة فرصة لتحميل الـ player
+        time.sleep(2)
 
-    is_valid = validate_m3u8_head(m3u8_url, referer=player_url)
-    print(f"[CHECK] m3u8 validation: {'PASS' if is_valid else 'WARN'}")
+        # حاول فتح صفحة المشغل مباشرة إذا كان موجود رابط data-url داخلي (fallback)
+        with contextlib.suppress(Exception):
+            # نحاول التقاط redirect لصفحة المشغل من DOM (بدون parsing ثقيل)
+            links = driver.find_elements(By.CSS_SELECTOR, "button.player-btn,[data-url]")
+            for el in links:
+                url = el.get_attribute("data-url") or ""
+                if "stream-91.php" in url:
+                    from urllib.parse import urljoin
+                    player_url = urljoin(WATCH_URL, url)
+                    driver.get(player_url)
+                    print(f"[NAV] Player page: {player_url}")
+                    break
 
-    if DRY_RUN:
-        print("[DRY-RUN] لن يتم تعديل bein.m3u في هذا الوضع.")
-        return
+        # حفّز التشغيل
+        stimulate_play(driver)
 
-    changed = update_bein_m3u(M3U_PATH, m3u8_url)
-    print("[WRITE] bein.m3u updated." if changed else "[WRITE] No change needed.")
+        # انتظر لحد ما يظهر طلب m3u8 في الشبكة
+        deadline = time.time() + CAPTURE_TIMEOUT_SEC
+        captured = None
+        seen = set()
+        while time.time() < deadline and not captured:
+            # فتّش الطلبات الجديدة فقط
+            for req in driver.requests:
+                if req.id in seen:
+                    continue
+                seen.add(req.id)
+                url = getattr(req, "url", "") or ""
+                if M3U8_RE.search(url):
+                    captured = url
+                    break
+            if not captured:
+                time.sleep(0.25)
 
+        if not captured:
+            raise RuntimeError("تعذر استخراج رابط m3u8 من حركة الشبكة (Selenium-Wire).")
+
+        print(f"[OK] Extracted m3u8: {captured}")
+
+        # تحقق خفيف
+        print(f"[CHECK] Validation: {'PASS' if validate_m3u8(captured) else 'WARN'}")
+
+        if DRY_RUN:
+            print("[DRY-RUN] لن يتم تعديل bein.m3u في هذا الوضع.")
+            return
+
+        changed = update_bein_m3u(M3U_PATH, captured)
+        print("[WRITE] bein.m3u updated." if changed else "[WRITE] No change needed.")
+    finally:
+        with contextlib.suppress(Exception):
+            driver.quit()
 
 if __name__ == "__main__":
     try:
