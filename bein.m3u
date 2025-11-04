@@ -1,11 +1,11 @@
 #EXTM3U
 # UPDATED: 2025-09-14 22:24:34 UTC
 #EXTINF:-1,beIN SPORTS 1
-https://stream.supertv.gg:3001/supertv/sport/stv1/ch1/ch1_720.m3u8
+https://planetary.lovecdn.ru/beINAR/index.fmp4.m3u8?token=8067815d8d7026a8a2c7f5aad2543d5b9fe016fb-714d825b0786f8cdd36deb9a8842a7aa-1762300291-1762289491
 #EXTINF:-1,beIN SPORTS 2
-https://stream.supertv.gg:3002/supertv/sport/stv2/ch2/ch2_720.m3u8
+https://planetary.lovecdn.ru/beINAR2/index.fmp4.m3u8?token=a2f1c19196cd74cbe608ea0eaba12b88e9a458d3-e48c13417442b3ba5caf0891fd91c35e-1762300361-1762289561
 #EXTINF:-1,beIN SPORTS 3
-https://stream.supertv.gg:3003/supertv/sport/stv3/ch3/ch3_720.m3u8
+https://planetary.lovecdn.ru/beINAR3/index.fmp4.m3u8?token=1c14f58acd0876e9ea5378d11a17728b2d2596c0-b7008555798bcdbba03389c42cfba767-1762300399-1762289599
 #EXTINF:-1,beIN SPORTS 4
 http://exm3u.extraott.com:80/live/ZUL96376/UG4VTW4E/61.m3u8
 #EXTINF:-1,beIN SPORTS 5
