@@ -2,11 +2,9 @@
 #EXTINF:-1,Varzesh TV Iran
 https://balance.footballii.ir/hls2/varzeshtv.m3u8
 #EXTINF:-1, ZIGGO SPORT 1 🇳🇱
-http://185.236.230.212:9982/play/a09f
+https://planetary.lovecdn.ru/ZiggoSport/index.fmp4.m3u8?token=6efa4254d97f425aa8775a94b78366705c00593a-e8a62208c5e520ddf06f25eefa03075b-1763032352-1763021552
 #EXTINF:-1,ZIGGO SPORT 2 🇳🇱
-http://185.236.230.212:9982/play/a099
-#EXTINF:-1, TELECOSTA GUATEMALA 🇬🇹
-https://tv91.hostingnuclear.com:19360/telecosta/telecosta.m3u8
+https://planetary.lovecdn.ru/ZiggoSport2/index.fmp4.m3u8?token=ee923b157705464c8e65d8c32749206f1a82608e-67861e9912bf527f657200d6008cd629-1763032385-1763021585
 #EXTINF:-1,SOLH SPORT 🇦🇫
 http://cors.tundracast.com:2000/https://wo.cma.footballii.ir/hls2/solh.m3u8
 #EXTINF:-1,Persiana Sports Iran
