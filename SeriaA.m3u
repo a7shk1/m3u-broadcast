@@ -1,8 +1,8 @@
 #EXTM3U
 #EXTINF:-1, starzplay1
-https://stream.supertv.gg:3010/supertv/sport/stv10/ch10/ch10_720.m3u8
+http://90309-fri.ott-cdn.me:80/play/live.php?mac=00:1A:79:6B:5F:AF&stream=761732&extension=ts&play_token=mfKL1HDB0X
 #EXTINF:-1, starzplay2
-https://stream.supertv.gg:3009/supertv/sport/stv9/ch9/ch9_720.m3u8
+http://90309-fri.ott-cdn.me:80/play/live.php?mac=00:1A:79:6B:5F:AF&stream=761733&extension=ts&play_token=JKo1QX5j4p
 #EXTINF:-1, abudhabi sport 1
 https://vo-live-media.cdb.cdn.orange.com/Content/Channel/AbuDhabiSportsChannel1/HLS/index.m3u8
 #EXTINF:-1, abudhabi sport 2 
