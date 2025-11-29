@@ -1,11 +1,11 @@
 #EXTM3U
 # UPDATED: 2025-09-14 22:24:34 UTC
 #EXTINF:-1,beIN SPORTS 1
-https://test.vartv.live/stream1_2/playlist.m3u8
+https://beautifulpeople.lovecdn.ru/beINAR/index.fmp4.m3u8?token=76c97fcc939044de165fe47670897fba70141405-88faff9ffa57f2eac3f36f62f0e03308-1764439423-1764428623
 #EXTINF:-1,beIN SPORTS 2
-https://beautifulpeople.lovecdn.ru/beINAR/index.fmp4.m3u8?token=f9830502e9ae36232aabb676d8aad9164e0ac6c9-92697c5c56f4fafc71b7f180f08f9b74-1764197332-1764186532
+https://beautifulpeople.lovecdn.ru/beINAR2/index.fmp4.m3u8?token=bafb49b477b9a0a3f1cbf483af09359844b2e993-6970215a3b6d8400ddf47c02822daafa-1764439465-1764428665
 #EXTINF:-1,beIN SPORTS 3
-https://beautifulpeople.lovecdn.ru/beINAR3/index.fmp4.m3u8?token=c7a7f1fbd3333638ea328d76d43d1030213132f0-ff5c5cfdb549fca3a29308cc0c837d5f-1764197416-1764186616
+https://beautifulpeople.lovecdn.ru/beINAR3/index.fmp4.m3u8?token=8f5e6a95cb2ac2166a97ebd05f99c34eb99370ad-52e70d4c806d6bbe5820b44be30ba2ca-1764439483-1764428683
 #EXTINF:-1,beIN SPORTS 4
 http://exm3u.extraott.com:80/live/ZUL96376/UG4VTW4E/61.m3u8
 #EXTINF:-1,beIN SPORTS 5
