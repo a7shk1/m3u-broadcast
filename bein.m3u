@@ -1,7 +1,7 @@
 #EXTM3U
 # UPDATED: 2025-09-14 22:24:34 UTC
 #EXTINF:-1,beIN SPORTS 1
-https://beautifulpeople.lovecdn.ru/beINAR/index.fmp4.m3u8?token=8537678f1edb3129a2cb0515881c78bfb312df23-e97267b23d2b54a9f634916be20e8350-1764794826-1764784026
+https://test.vartv.live/hls/ch1.m3u8
 #EXTINF:-1,beIN SPORTS 2
 https://beautifulpeople.lovecdn.ru/beINAR2/index.fmp4.m3u8?token=3f1fce94c33355b1745b89cdae26dc01ecb12389-432715a68295784a342eaeb748dcf504-1764794882-1764784082
 #EXTINF:-1,beIN SPORTS 3
