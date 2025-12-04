@@ -1,22 +1,4 @@
 #EXTM3U
-#EXTINF:-1,Varzesh TV Iran
-https://balance.footballii.ir/hls2/varzeshtv.m3u8
-#EXTINF:-1, ZIGGO SPORT 1 🇳🇱
-https://planetary.lovecdn.ru/ZiggoSport/index.fmp4.m3u8?token=6efa4254d97f425aa8775a94b78366705c00593a-e8a62208c5e520ddf06f25eefa03075b-1763032352-1763021552
-#EXTINF:-1,ZIGGO SPORT 2 🇳🇱
-https://planetary.lovecdn.ru/ZiggoSport2/index.fmp4.m3u8?token=ee923b157705464c8e65d8c32749206f1a82608e-67861e9912bf527f657200d6008cd629-1763032385-1763021585
-#EXTINF:-1,SOLH SPORT 🇦🇫
-http://cors.tundracast.com:2000/https://wo.cma.footballii.ir/hls2/solh.m3u8
-#EXTINF:-1,Persiana Sports Iran
-https://spstr.abntv.live/hls/psstream.m3u8
-#EXTINF:-1,MATCH! FOOTBALL 1 RUSSIA
-http://22fdd620.kazaktelekom.com/iptv/8KSD5KFDXA6H88/222/index.m3u8
-#EXTINF:-1,MATCH! FOOTBALL 2 RUSSIA
-http://22fdd620.kazaktelekom.com/iptv/8KSD5KFDXA6H88/211/index.m3u8
-#EXTINF:-1,MATCH! FOOTBALL 3 RUSSIA
-http://22fdd620.kazaktelekom.com/iptv/8KSD5KFDXA6H88/206/index.m3u8
-#EXTINF:-1,Match! TV Russia
-http://catchup.videoline.ru/match/tracks-v1a1/mono.m3u8
 #EXTINF:-1, Super Sport 1 🇦🇱
 http://93.93.113.95:25461/TV-Berati/XtreamCodes/494
 #EXTINF:-1, Super Sport 2 🇦🇱
@@ -25,5 +7,27 @@ http://93.93.113.95:25461/TV-Berati/XtreamCodes/495
 http://@195.181.169.152:8080/Super_Sport_3_HD_AL/index.m3u8?token=test
 #EXTINF:-1, Super Sport 4 🇦🇱
 http://@195.181.169.152:8080/Super_Sport_4_HD_AL/index.m3u8?token=test
+#EXTINF:-1,MATCH! FOOTBALL 1 RUSSIA
+http://22fdd620.kazaktelekom.com/iptv/8KSD5KFDXA6H88/222/index.m3u8
+#EXTINF:-1,MATCH! FOOTBALL 2 RUSSIA
+http://22fdd620.kazaktelekom.com/iptv/8KSD5KFDXA6H88/211/index.m3u8
+#EXTINF:-1,MATCH! FOOTBALL 3 RUSSIA
+http://22fdd620.kazaktelekom.com/iptv/8KSD5KFDXA6H88/206/index.m3u8
+#EXTINF:-1, MAX SPORT 1 🇧🇬
+http://77.46.130.252:99/maxsport1
+#EXTINF:-1, MAX SPORT 2 🇧🇬
+http://77.46.130.252:99/maxsport2
+#EXTINF:-1, MAX SPORT 3 🇧🇬
+http://77.46.130.252:99/maxsport3
+#EXTINF:-1, MAX SPORT 4 🇧🇬
+http://77.46.130.252:99/maxsport4
+#EXTINF:-1,Varzesh TV Iran
+https://balance.footballii.ir/hls2/varzeshtv.m3u8
+#EXTINF:-1,SOLH SPORT 🇦🇫
+http://cors.tundracast.com:2000/https://wo.cma.footballii.ir/hls2/solh.m3u8
+#EXTINF:-1,Persiana Sports Iran
+https://spstr.abntv.live/hls/psstream.m3u8
+#EXTINF:-1,Match! TV Russia
+http://catchup.videoline.ru/match/tracks-v1a1/mono.m3u8
 #EXTINF:-1,Real Madrid TV 
 https://rmtv.akamaized.net/hls/live/2043153/rmtv-es-web/bitrate_3.m3u8
