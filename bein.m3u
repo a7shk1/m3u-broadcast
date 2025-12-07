@@ -1,5 +1,7 @@
 #EXTM3U
 # UPDATED: 2025-09-14 22:24:34 UTC
+#EXTINF:-1,beIN SPORTS HD
+https://connect-live.bein.com/besmenasports/index.mpd?hdnts=data=env=beinmena-production,customerID=0,clientID=256,jwt=eyJhbGciOiJIUzI1NiJ9.eyJpZF9jaGFubmVsIjo3NCwiYXBpcCI6IjQ1LjEyOC4xMjIuNCIsImlkX2lkZW50aXR5IjowLCJpZF9kZXZpY2UiOiJvcGVuYXBpIiwiaWRfY3VzdG9tZXIiOjAsImlkX3N0cmVhbSI6IjhiNGFhNzc2LWFjYjktNGMzMi04OWU5LWYyNjUzZDJlZGFmNiJ9.M7Uik8cyXCcSOgu05LME3XqiueGL0jM_Br86hVdu7UY~st=1765131601~exp=1765138801~acl=/besmenasports/*~hmac=5cb291c79b70791f732b49d7a634948d90230049bb33fce5ad9fc2e7e13c8b87&?idChannel=74&playerName=bitmovin-web&playerVersion=10.0&checksum=IxdUGgtzleC%2BdcaNMmZeOClGauYnuJdsKg5uOwtm3JE%3D
 #EXTINF:-1,beIN SPORTS 1
 https://test.vartv.live/hls/ch1.m3u8
 #EXTINF:-1,beIN SPORTS 2
