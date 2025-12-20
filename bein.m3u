@@ -7,7 +7,7 @@ https://manifest.googlevideo.com/api/manifest/hls_variant/expire/1766012250/ei/-
 #EXTINF:-1,beIN SPORTS 1
 https://beautifulpeople.lovecdn.ru/beINAR/mono.m3u8?token=YmVJTkFSfG5vX2NoZWNrX2lwfDE3NjYyNTkwMTE%3D.b24f12fc165339f5df858fb161db38c688e9586699bcdde735f1123931a4defc
 #EXTINF:-1,beIN SPORTS 2
-https://test.vartv.live/hls/ch2.m3u8
+https://beautifulpeople.lovecdn.ru/beINAR2/mono.m3u8?token=YmVJTkFSMnxub19jaGVja19pcHwxNzY2MjU5MDk5.ab06b2d75d62f44ef7e20cb8ccd9f2c215593c82e0e834c3feaf379de6bb7fdf
 #EXTINF:-1,beIN SPORTS 3
 https://test.vartv.live/hls/ch3.m3u8
 #EXTINF:-1,beIN SPORTS 4
