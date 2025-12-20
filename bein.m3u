@@ -7,7 +7,7 @@ https://manifest.googlevideo.com/api/manifest/hls_variant/expire/1766012250/ei/-
 #EXTINF:-1,beIN SPORTS 1
 https://planetary.lovecdn.ru/beINAR/mono.m3u8?token=YmVJTkFSfG5vX2NoZWNrX2lwfDE3NjYyNjA4NTk%3D.a41315689c1675c0a868e4108e16b00efa5259b8803e39798b38e94fae7e9619
 #EXTINF:-1,beIN SPORTS 2
-https://test.vartv.live/hls/ch1.m3u8
+https://fc0e09a98691.eu-west-1.playback.live-video.net/api/video/v1/eu-west-1.691416125068.channel.Z1jeHFFCSMax.m3u8
 #EXTINF:-1,beIN SPORTS 3
 https://test.vartv.live/hls/ch3.m3u8
 #EXTINF:-1,beIN SPORTS 4
