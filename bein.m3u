@@ -1,7 +1,7 @@
 #EXTM3U
 # UPDATED: 2025-09-14 22:24:34 UTC
 #EXTINF:-1,beIN SPORTS الاخبارية
-https://connect-live.bein.com/besmenasportsnews/index.mpd?hdnts=data=env=beinmena-production,customerID=0,clientID=256,jwt=eyJhbGciOiJIUzI1NiJ9.eyJpZF9jaGFubmVsIjo3NSwiYXBpcCI6IjE5NS42OS4yMzAuMTMzIiwiaWRfaWRlbnRpdHkiOjAsImlkX2RldmljZSI6Im9wZW5hcGkiLCJpZF9jdXN0b21lciI6MCwiaWRfc3RyZWFtIjoiYTI4MmZjNTMtM2VlYS00NGU5LTk3NWUtODJmMGJhNTdiOWU2In0.f3MYJLIlbGNM3bH4qEA6e9qmjxd6jKf_YEdiB6BAWf0~st=1766490865~exp=1766498065~acl=/besmenasportsnews/*~hmac=8b5159bccff621bbeb09fb24f8baa36d5bcad306baa3a444b664d09096f02d53&?idChannel=75&playerName=bitmovin-web&playerVersion=10.0&checksum=svV61Z364Lxe99%2FmzpzvMMST1Q1dUGVL7zNM2cEfqFU%3D
+https://vartv.b-cdn.net/hls/ch1.m3u8
 #EXTINF:-1,beIN SPORTS MAX 1
 https://90e331f54990.eu-central-1.playback.live-video.net/api/video/v1/eu-central-1.691416125068.channel.Zr1wB9mWXrOk.m3u8
 #EXTINF:-1,beIN SPORTS 1
