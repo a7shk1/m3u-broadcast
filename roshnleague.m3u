@@ -1,10 +1,16 @@
 #EXTM3U
-#EXTINF:-1,SSC 1
-http://exm3u.extraott.com:80/live/ZUL96376/UG4VTW4E/400551970.m3u8
-#EXTINF:-1,SSC 2
-http://het114a.4rouwanda-shop.store/live/33523510/index.m3u8
-#EXTINF:-1,SSC 3
-http://exm3u.extraott.com:80/live/ZUL96376/UG4VTW4E/400551968.m3u8
+#EXTINF:-1,Al kass 1 HD
+https://liveeu-gcp.alkassdigital.net/alkass1-bu/20251218T024018Z/mux_video_720p_ts/index-1.m3u8
+#EXTINF:-1,Al kass 2 HD
+https://liveeu-gcp.alkassdigital.net/alkass2-p/20260102T032831Z/mux_video_240p_ts/index-1.m3u8
+#EXTINF:-1,Al kass 3 HD
+https://liveeu-gcp.alkassdigital.net/alkass3-p/20260102T033003Z/mux_video_1080p_ts/index-1.m3u8
+#EXTINF:-1,Al kass 4 HD
+https://liveeu-gcp.alkassdigital.net/alkass4-p/20251213T060324Z/mux_video_720p_ts/index-1.m3u8
+#EXTINF:-1,Al kass 5 HD
+https://liveeu-gcp.alkassdigital.net/shooflive/20251209T054015Z/mux_video_1080p_ts/index-1.m3u8
+#EXTINF:-1,Al kass 6 HD
+https://liveeu-gcp.alkassdigital.net/alkass6-p/20251212T182329Z/mux_video_720p_ts/index-1.m3u8
 #EXTINF:-1,Thmanyah 1
 http://adminapk.in:80/live/hpxyybonnL/MgXRqDxDLl/63844.m3u8
 #EXTINF:-1,Thmanyah 2
