@@ -1,15 +1,15 @@
 #EXTM3U
-#EXTINF:-1,PSN 1
-https://cdn4.skygo.mn/live/disk1/SPSPrime/HLSv3-FTA/SPSPrime.m3u8
-#EXTINF:-1,PSN 2
-https://cdn4.skygo.mn/live/disk1/SPSPlay/HLSv3-FTA/SPSPlay.m3u8
-#EXTINF:-1,ESPN 3
-http://181.119.86.68:8000/play/b033/index.m3u8
-#EXTINF:-1,PSN 4
-https://cdn4.skygo.mn/live/disk1/SPSFight/HLSv3-FTA/SPSFight.m3u8
-#EXTINF:-1,PSN 5
-https://cdn4.skygo.mn/live/disk1/SPSPlus/HLSv3-FTA/SPSPlus.m3u8
-#EXTINF:-1,ESPN 6
-http://181.119.85.222:8000/play/a01s/index.m3u8
-#EXTINF:-1,ESPN 7
-http://181.119.86.68:8000/play/b029/index.m3u8
+#EXTINF:-1,Pro sport HD 
+https://proshls.wns.live/hls/stream.m3u8
+#EXTINF:-1,GEM Sport HD
+https://ss.90minlive.online/live/IR%20-%20GEM%20Sport2/chunks.m3u8
+#EXTINF:-1,Persiana Sports 1 HD
+https://spstr.abntv.live/hls/psstream.m3u8
+#EXTINF:-1,Telewebion Sport 1 HD
+https://live-azd1118.telewebion.com/ek/sport1/live/720p/index.m3u8
+#EXTINF:-1,Telewebion Sport 2 HD
+https://live-azd1118.telewebion.com/ek/sport3/live/720p/index.m3u8
+#EXTINF:-1,Telewebion Sport 3 HD
+https://live-azd1118.telewebion.com/ek/sport3/live/720p/index.m3u8
+#EXTINF:-1,Pro sport HD 
+https://proshls.wns.live/hls/stream.m3u8
