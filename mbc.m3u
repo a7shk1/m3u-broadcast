@@ -7,8 +7,7 @@ http://exm3u.extraott.com:80/live/ZUL96376/UG4VTW4E/122061.m3u8
 https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-3-usa/5d58265a862a476dc7f97694addb5ded/manifest/audio1/192kbps/audio.m3u8
 https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-3-usa/5d58265a862a476dc7f97694addb5ded/manifest/video/1080p2400kbps/video.m3u8
 #EXTINF:-1, MBC 4
-https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-4/24f134f1cd63db9346439e96b86ca6ed/manifest/audio1/192kbps/audio.m3u8
-https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-4/24f134f1cd63db9346439e96b86ca6ed/manifest/video/1080p2400kbps/video.m3u8
+https://raw.githubusercontent.com/a7shk1/m3u-broadcast/refs/heads/main/mbc4.m3u8
 #EXTINF:-1, mbc Action 
 http://exm3u.extraott.com:80/live/ZUL96376/UG4VTW4E/122066.m3u8
 #EXTINF:-1, MBC Drama+ 
