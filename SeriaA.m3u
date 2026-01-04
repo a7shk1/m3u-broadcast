@@ -5,5 +5,7 @@ http://90309-fri.ott-cdn.me:80/play/live.php?mac=00:1A:79:6B:5F:AF&stream=761732
 http://90309-fri.ott-cdn.me:80/play/live.php?mac=00:1A:79:6B:5F:AF&stream=761733&extension=ts&play_token=JKo1QX5j4p
 #EXTINF:-1, abudhabi sport 1
 https://admn-live-cdn-lb.starzplayarabia.com/out/v1/admn_tv_enc/abudhabi_sports_1/abudhabi_sports_1_hls_nd/index_sp1_video_enc_720p25.m3u8
+https://admn-live-cdn-lb.starzplayarabia.com/out/v1/admn_tv_enc/abudhabi_sports_1/abudhabi_sports_1_hls_nd/index_sp1_audio_enc_ara.m3u8
 #EXTINF:-1, abudhabi sport 2 
 https://admn-live-cdn-lb.starzplayarabia.com/out/v1/admn_tv_enc/abudhabi_sports_2/abudhabi_sports_2_hls_nd/index_sp2_video_enc_720p25.m3u8
+https://admn-live-cdn-lb.starzplayarabia.com/out/v1/admn_tv_enc/abudhabi_sports_2/abudhabi_sports_2_hls_nd/index_sp2_audio_enc_ara.m3u8
