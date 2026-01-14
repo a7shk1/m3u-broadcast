@@ -1,6 +1,6 @@
 #EXTM3U
-#EXTINF:-1,beIN SPORTS 1 news
-https://manifest.googlevideo.com/api/manifest/hls_variant/expire/1767126692/ei/ROJTaeaAAYCjzPsP7ubQiAg/ip/45.128.122.105/id/2lJZPT6OljI.1/source/yt_live_broadcast/requiressl/yes/xpc/EgVo2aDSNQ%3D%3D/hfr/1/playlist_duration/3600/manifest_duration/3600/demuxed/1/maudio/1/gcr/iq/bui/AYUSA3Du0qDHmRKEl4g6u-kXlkr0hJC4Mz36Io1DoPaJnj_SnI9-fSirLwLECf_CCwlIgi7EulqpkaWG/spc/wH4Qqz5Tvlkhg5sABwNsMV53yA_EIuC9e8YeorMxuza7Wce97Hw7p3dLQJg/vprv/1/go/1/rqh/5/pacing/0/nvgoi/1/short_key/1/ncsapi/1/keepalive/yes/fexp/51552689%2C51565116%2C51565682%2C51580968/dover/13/itag/0/playlist_type/DVR/sparams/expire%2Cei%2Cip%2Cid%2Csource%2Crequiressl%2Cxpc%2Chfr%2Cplaylist_duration%2Cmanifest_duration%2Cdemuxed%2Cmaudio%2Cgcr%2Cbui%2Cspc%2Cvprv%2Cgo%2Crqh%2Citag%2Cplaylist_type/sig/AJfQdSswRgIhALyL0N76qvVpQ35LweZI7a5KcHwl8-5anRR1SGB6a62UAiEA_HL5xuYAEQCq7LMiqzPmKCmDABBoshh1FFqBwG2WFTY%3D/file/index.m3u8
+#EXTINF:-1,beIN SPORTS 1 Shahid
+https://90e331f54990.eu-central-1.playback.live-video.net/api/video/v1/eu-central-1.691416125068.channel.Zr1wB9mWXrOk.m3u8
 #EXTINF:-1,beIN SPORTS MAX 1
 https://test.vartv.live/hls/ch4.m3u8
 #EXTINF:-1,beIN SPORTS 1
