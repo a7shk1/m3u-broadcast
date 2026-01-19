@@ -1,7 +1,7 @@
 #EXTM3U
 #EXTINF:-1,beIN SPORTS 1 Shahid
 https://corsply-lw732ndpe2a5z.cfpass1.workers.dev/?url=https%3A%2F%2Fbein-beinxtrasports-firetv.amagi.tv%2FplaylistR1080p.m3u8
-https://90e331f54990.eu-central-1.playback.live-video.net/api/video/v1/eu-central-1.691416125068.channel.Zr1wB9mWXrOk.m3u8
+#https://90e331f54990.eu-central-1.playback.live-video.net/api/video/v1/eu-central-1.691416125068.channel.Zr1wB9mWXrOk.m3u8
 #EXTINF:-1,beIN SPORTS 1
 https://test.vartv.live/hls/ch1.m3u8
 #EXTINF:-1,beIN SPORTS 2
