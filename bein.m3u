@@ -1,6 +1,6 @@
 #EXTM3U
 #EXTINF:-1,beIN SPORTS 1 Shahid
-https://corsply-lw732ndpe2a5z.cfpass1.workers.dev/?url=https%3A%2F%2Fbein-beinxtrasports-firetv.amagi.tv%2FplaylistR1080p.m3u8
+http://135.125.109.73:9000/beinsport1_.m3u8
 #https://90e331f54990.eu-central-1.playback.live-video.net/api/video/v1/eu-central-1.691416125068.channel.Zr1wB9mWXrOk.m3u8
 #EXTINF:-1,beIN SPORTS 1
 https://test.vartv.live/hls/ch1.m3u8
@@ -11,12 +11,12 @@ https://test.vartv.live/hls/ch3.m3u8
 #EXTINF:-1,beIN SPORTS 4
 http://135.125.109.73:9000/beinsport4_.m3u8
 #EXTINF:-1,beIN SPORTS 5
-http://adminapk.in:80/live/hpxyybonnL/MgXRqDxDLl/33889.m3u8
+http://135.125.109.73:9000/beinsport5_.m3u8
 #EXTINF:-1,beIN SPORTS 6
-http://adminapk.in:80/live/hpxyybonnL/MgXRqDxDLl/33890.m3u8
+http://135.125.109.73:9000/beinsport6_.m3u8
 #EXTINF:-1,beIN SPORTS 7
-http://adminapk.in:80/live/hpxyybonnL/MgXRqDxDLl/33891.m3u8
+http://135.125.109.73:9000/beinsport7_.m3u8
 #EXTINF:-1,beIN SPORTS 8
-http://adminapk.in:80/live/hpxyybonnL/MgXRqDxDLl/33892.m3u8
+http://135.125.109.73:9000/beinsport8_.m3u8
 #EXTINF:-1,beIN SPORTS 9
-http://adminapk.in:80/live/hpxyybonnL/MgXRqDxDLl/33893.m3u8
+http://135.125.109.73:9000/beinsport9_.m3u8
