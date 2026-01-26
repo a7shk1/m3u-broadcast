@@ -18,4 +18,5 @@ http://135.125.109.73:9000/beinsport7_.m3u8
 #EXTINF:-1,beIN SPORTS 8
 http://135.125.109.73:9000/beinsport8_.m3u8
 #EXTINF:-1,beIN SPORTS 9
-http://135.125.109.73:9000/beinsport9_.m3u8
+#http://135.125.109.73:9000/beinsport9_.m3u8
+srt://213.199.33.203:10080?streamid=#!::r=live/ch1,m=request
