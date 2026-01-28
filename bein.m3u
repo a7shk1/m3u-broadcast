@@ -9,8 +9,8 @@ http://213.199.33.203:8081/live/ch2.m3u8
 #EXTINF:-1,beIN SPORTS 3 
 http://213.199.33.203:8081/live/ch3.m3u8
 #EXTINF:-1,beIN SPORTS 4
-http://213.199.33.203:8081/live/ch4.m3u8
-#http://135.125.109.73:9000/beinsport4_.m3u8
+http://135.125.109.73:9000/beinsport4_.m3u8
+#http://213.199.33.203:8081/live/ch4.m3u8
 #EXTINF:-1,beIN SPORTS 5
 http://135.125.109.73:9000/beinsport5_.m3u8
 #EXTINF:-1,beIN SPORTS 6
