@@ -1,9 +1,14 @@
 #EXTM3U
 #EXTINF:-1,Pro sport HD 
 https://proshls.wns.live/hls/stream.m3u8
-#EXTINF:-1,GEM Sport HD
-https://glwizhstb52.glwiz.com/GemSport_HD/GemSport_High.m3u8?user=sgls76551&session=d3dee54e1a040f58a6090d4e13767058599d93a344188b9880a1af69964c9a587bd73ecf4d923231&hlsid=HTTP_ID_117&group_id=76551
 #EXTINF:-1,Persiana Sports 1 HD
 https://spstr.abntv.live/hls/psstream.m3u8
-#EXTINF:-1,Solh Sports HD
-https://stream.snexus.co/live/SN_WILDLIFE/main_stream.m3u8
+#EXTINF:-1,Persiana Sports 2 HD
+https://glwizhhls20.glwiz.com/PersianaSports2/PersianaSports2_Low.m3u8?user=sglsv121kr02hehr445qhsb2p034&session=64a48205d0a8f2c37563cbfa9b91d646ad200bb0461979f0492225abc86d4f00f32a65bc1709035ba46f1ec8542e741abe82cf11392796b4c7ad11cb4536875d&hlsid=HTTP_ID_29185
+#EXTINF:-1,Persiana Sports 3 HD
+https://glwizhhls25.glwiz.com/PersianaSports3/PersianaSports3_Low.m3u8?user=sglsv121kr02hehr445qhsb2p034&session=4f08b4e34ac4cc2b74d96b7cc6b61fb3ad200bb0461979f0492225abc86d4f00f32a65bc1709035ba46f1ec8542e741abe82cf11392796b4c7ad11cb4536875d&hlsid=HTTP_ID_26762
+#EXTINF:-1,Persiana Sports 4 HD
+https://glwizhhls22.glwiz.com/PersianaSports4/PersianaSports4_LR.m3u8?user=sglsv121kr02hehr445qhsb2p034&session=eee49691443b6d28c83bca8fe311e279ad200bb0461979f0492225abc86d4f00f32a65bc1709035ba46f1ec8542e741abe82cf11392796b4c7ad11cb4536875d&hlsid=HTTP_ID_45799
+#EXTINF:-1,IRIB Channel 3 HD 
+https://glwizhhls25.glwiz.com/IRIBChannel3/IRIBChannel3_Low.m3u8?user=sglsv121kr02hehr445qhsb2p034&session=d828f7963301a5419f78c403ba306b7f679bbd5f5a6a961d492225abc86d4f00f32a65bc1709035ba46f1ec8542e741abe82cf11392796b4c7ad11cb4536875d&hlsid=HTTP_ID_26762
+
