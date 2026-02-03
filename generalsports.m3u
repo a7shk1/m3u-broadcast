@@ -15,10 +15,6 @@ http://cdntv.online/low/9mlxywika2/55.m3u8
 http://188.191.160.238:7780/udp/239.195.3.17:1234
 #EXTINF:-1,MATCH! FOOTBALL 3 RUSSIA
 http://188.191.160.238:7780/udp/239.195.3.18:1234
-#EXTINF:-1,Setanta Sports 1 HD
-https://iptv.prosto.tv/ch106/mono.m3u8?live=1&id=874221&secret=2b0gapxt&21yo=0&e=1771416823&st=XFj0_SKqzi34RP1Qz4RVxA
-#EXTINF:-1,Setanta Sports 2 HD
-https://iptv.prosto.tv/ch104/mono.m3u8?live=1&id=874221&secret=2b0gapxt&21yo=0&e=1771416756&st=J3kItJxK08Upi4Fwr806IA
 #EXTINF:-1, MAX SPORT 1 🇧🇬
 http://77.46.130.252:99/maxsport1
 #EXTINF:-1, MAX SPORT 2 🇧🇬
@@ -27,9 +23,5 @@ http://77.46.130.252:99/maxsport2
 http://77.46.130.252:99/maxsport3
 #EXTINF:-1, MAX SPORT 4 🇧🇬
 http://77.46.130.252:99/maxsport4
-#EXTINF:-1,Varzesh TV Iran
-https://balance.footballii.ir/hls2/varzeshtv.m3u8
-#EXTINF:-1,Persiana Sports Iran
-https://spstr.abntv.live/hls/psstream.m3u8
 #EXTINF:-1,Real Madrid TV 
 https://rmtv.akamaized.net/hls/live/2043153/rmtv-es-web/bitrate_3.m3u8
