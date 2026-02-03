@@ -1,6 +1,6 @@
 #EXTM3U
 #EXTINF:-1,Al kass 1 HD
-https://liveeu-gcp.alkassdigital.net/alkass1-bu/20251218T024018Z/mux_video_720p_ts/index-1.m3u8
+https://liveeu-gcps.alkassdigital.net/alkass1-p/20260115T071402Z/mux_video_720p_ts/hdntl=exp=1770211832~acl=%2f*~data=hdntl~hmac=186b10fb27497560a35a2aa5b8830e6642033eb09b79d744e158181407fad851/index-1.m3u8
 #EXTINF:-1,Al kass 2 HD
 https://liveeu-gcp.alkassdigital.net/alkass2-p/20260102T032831Z/mux_video_720p_ts/index-1.m3u8
 #EXTINF:-1,Al kass 3 HD
