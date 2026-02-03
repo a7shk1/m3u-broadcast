@@ -1,11 +1,9 @@
 #EXTM3U
-#EXTINF:-1,TNT SPORTS
-http://181.78.201.70:8000/play/a0tx/index.m3u8
 #EXTINF:-1,TNT SPORTS 1
 http://xxip25.top:8080/pdSQU2/612384/53708
 #EXTINF:-1,TNT SPORTS 2
 https://a1xs.vip/2000022
 #EXTINF:-1,Sky Sports Main Event HD
-https://l.hilay.tv/skysportsmaineventuhd
-#EXTINF:-1,SKY SPORTS PREMIER LEAGUE UK
 https://a1xs.vip/2000002
+#EXTINF:-1,SKY SPORTS PREMIER LEAGUE UK
+https://l.hilay.tv/skypremierleaguehd
