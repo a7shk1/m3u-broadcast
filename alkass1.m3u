@@ -1,4 +1,6 @@
 #EXTM3U
-#EXT-X-VERSION:3
-#EXT-X-STREAM-INF:BANDWIDTH=3000000,RESOLUTION=1920x1080
-https://liveeu-gcps.alkassdigital.net/alkass1-p/20260115T071402Z/mux_video_1080p_ts/hdntl=exp=1770212655~acl=%2f*~data=hdntl~hmac=414968271d217fb49075c320b49b6cb7c047d9d7adf7326242cc008ee7603362/index-1.m3u8|User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36&Referer=https://shoof.alkass.net/&Origin=https://shoof.alkass.net
+#EXTINF:-1 group-title="Sports", Alkass Shoof (Fixed)
+#EXTVLCOPT:http-user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36
+#EXTVLCOPT:http-referrer=https://shoof.alkass.net/
+#EXTVLCOPT:http-origin=https://shoof.alkass.net
+https://liveeu-gcps.alkassdigital.net/alkass1-p/20260115T071402Z/mux_video_1080p_ts/hdntl=exp=1770212655~acl=%2f*~data=hdntl~hmac=414968271d217fb49075c320b49b6cb7c047d9d7adf7326242cc008ee7603362/index-1.m3u8
