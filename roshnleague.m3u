@@ -1,6 +1,6 @@
 #EXTM3U
 #EXTINF:-1,Al kass 1 HD
-https://raw.githubusercontent.com/a7shk1/m3u-broadcast/refs/heads/main/alkass1.m3u8
+https://raw.githubusercontent.com/a7shk1/m3u-broadcast/refs/heads/main/alkass1.m3u
 #EXTINF:-1,Al kass 2 HD
 https://liveeu-gcp.alkassdigital.net/alkass2-p/20260102T032831Z/mux_video_720p_ts/index-1.m3u8
 #EXTINF:-1,Al kass 3 HD
