@@ -1,8 +1,6 @@
 #EXTM3U
 #EXTINF:-1,Pro sport HD 
 https://proshls.wns.live/hls/stream.m3u8
-#EXTINF:-1,Varzesh TV Iran
-https://balance.footballii.ir/hls2/varzeshtv.m3u8
 #EXTINF:-1,Persiana Sports 1 HD
 https://spstr.abntv.live/hls/psstream.m3u8
 #EXTINF:-1,Persiana Sports 2 HD
